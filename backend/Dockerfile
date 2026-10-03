@@ -15,7 +15,8 @@ COPY . .
 ENV PYTHONUNBUFFERED=1 \
     DEMO_MODE=true \
     PORT=8000 \
-    PYTHONPATH=/app
+    PYTHONPATH=/app \
+    DEMO_DATA_DIR=/app/demo_data
 
 EXPOSE 8000
 

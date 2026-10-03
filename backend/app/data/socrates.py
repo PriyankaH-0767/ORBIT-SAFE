@@ -27,13 +27,11 @@ from app.utils.time import ensure_utc, format_iso_utc, now_utc, parse_iso_utc
 
 logger = logging.getLogger(__name__)
 
-_ROOT_DEMO_DIR = Path(__file__).resolve().parents[3] / "demo_data"
-_APP_DEMO_DIR = Path(__file__).resolve().parents[2] / "demo_data"
-_DEMO_BASE = _ROOT_DEMO_DIR if _ROOT_DEMO_DIR.exists() else _APP_DEMO_DIR
+from app.data.demo_loader import DEMO_DIR
 
 # Default paths
-_DEFAULT_CACHE_DIR = _DEMO_BASE / "cache" / "socrates"
-_DEFAULT_FIXTURE_PATH = _DEMO_BASE / "validation" / "socrates_fixture.json"
+_DEFAULT_CACHE_DIR = DEMO_DIR / "cache" / "socrates"
+_DEFAULT_FIXTURE_PATH = DEMO_DIR / "validation" / "socrates_fixture.json"
 
 
 

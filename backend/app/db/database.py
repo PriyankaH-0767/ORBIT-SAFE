@@ -1,5 +1,6 @@
 """SQLAlchemy 2.x database engine, session factory, and declarative Base for D-DATO."""
 
+from pathlib import Path
 from typing import Generator, Optional
 from sqlalchemy import Engine, create_engine
 from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
@@ -46,6 +47,10 @@ def get_db() -> Generator[Session, None, None]:
 def init_db(target_engine: Optional[Engine] = None) -> None:
     """Initialize database schema by creating all tables defined in Base metadata."""
     eng = target_engine or engine
+    if str(eng.url).startswith("sqlite"):
+        db_file = eng.url.database
+        if db_file and db_file != ":memory:":
+            Path(db_file).resolve().parent.mkdir(parents=True, exist_ok=True)
     Base.metadata.create_all(bind=eng)
 
 
