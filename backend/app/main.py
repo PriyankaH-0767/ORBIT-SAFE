@@ -1,8 +1,11 @@
 """D-DATO FastAPI Application Entrypoint."""
 
 from contextlib import asynccontextmanager
-from fastapi import FastAPI
+from pathlib import Path
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 
 from app.api.v1 import api_router
 from app.core.config import settings
@@ -62,10 +65,26 @@ def create_application() -> FastAPI:
 
 app = create_application()
 
+# Monorepo frontend static assets detection
+FRONTEND_DIST_DIR = Path(__file__).resolve().parents[2] / "frontend" / "dist"
+INDEX_HTML = FRONTEND_DIST_DIR / "index.html"
+
+if FRONTEND_DIST_DIR.exists() and INDEX_HTML.exists():
+    assets_dir = FRONTEND_DIST_DIR / "assets"
+    if assets_dir.exists():
+        app.mount("/assets", StaticFiles(directory=str(assets_dir)), name="assets")
+
+    cesium_dir = FRONTEND_DIST_DIR / "cesiumStatic"
+    if cesium_dir.exists():
+        app.mount("/cesiumStatic", StaticFiles(directory=str(cesium_dir)), name="cesiumStatic")
+
 
 @app.get("/", tags=["Root"])
-def root():
-    """Root endpoint providing service metadata and documentation links."""
+def root(request: Request):
+    """Root endpoint providing service metadata or UI entrypoint for browser sessions."""
+    accept = request.headers.get("accept", "")
+    if "text/html" in accept and INDEX_HTML.exists():
+        return FileResponse(str(INDEX_HTML))
     return {
         "service": settings.APP_NAME,
         "version": settings.APP_VERSION,
@@ -75,3 +94,14 @@ def root():
         "openapi_url": "/openapi.json",
         "health_url": f"{settings.API_V1_PREFIX}/health",
     }
+
+
+if FRONTEND_DIST_DIR.exists() and INDEX_HTML.exists():
+    @app.get("/{full_path:path}", tags=["Frontend"], include_in_schema=False)
+    async def serve_spa(full_path: str):
+        """Serve compiled frontend SPA routes or static files."""
+        file_path = FRONTEND_DIST_DIR / full_path
+        if full_path and file_path.is_file():
+            return FileResponse(str(file_path))
+        return FileResponse(str(INDEX_HTML))
+

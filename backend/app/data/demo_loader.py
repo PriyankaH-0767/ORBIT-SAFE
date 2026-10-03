@@ -20,7 +20,9 @@ from typing import Any, Dict, List, Optional, Tuple
 from app.data.parser import CanonicalElementRecord, parse_catalog_payload
 from app.utils.time import now_utc
 
-DEMO_DIR = Path(__file__).resolve().parents[3] / "demo_data"
+_ROOT_DEMO = Path(__file__).resolve().parents[3] / "demo_data"
+_APP_DEMO = Path(__file__).resolve().parents[2] / "demo_data"
+DEMO_DIR = _ROOT_DEMO if _ROOT_DEMO.exists() else _APP_DEMO
 DEMO_TLE_PATH = DEMO_DIR / "tle" / "demo_catalog.tle"
 DEMO_JSON_PATH = DEMO_DIR / "demo_catalog.json"
 

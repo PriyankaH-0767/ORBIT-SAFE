@@ -26,7 +26,10 @@ from app.utils.time import ensure_utc, format_iso_utc, is_aware, now_utc, parse_
 logger = logging.getLogger(__name__)
 
 # Default base directory: <repo_root>/demo_data/cache/celestrak
-DEFAULT_CACHE_DIR = Path(__file__).resolve().parents[3] / "demo_data" / "cache" / "celestrak"
+_ROOT_DEMO_DIR = Path(__file__).resolve().parents[3] / "demo_data"
+_APP_DEMO_DIR = Path(__file__).resolve().parents[2] / "demo_data"
+_DEMO_BASE = _ROOT_DEMO_DIR if _ROOT_DEMO_DIR.exists() else _APP_DEMO_DIR
+DEFAULT_CACHE_DIR = _DEMO_BASE / "cache" / "celestrak"
 
 
 @dataclass
