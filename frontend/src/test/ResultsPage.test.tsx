@@ -306,9 +306,9 @@ describe('ResultsPage Integration', () => {
 
     // Verify summary metrics populated from run status (195 evaluated, 195 ranked, 14 events)
     await waitFor(() => {
-      expect(screen.getByText('Candidates Evaluated')).toBeInTheDocument()
+      expect(screen.getByText('Candidates Screened')).toBeInTheDocument()
       expect(screen.getByText('Candidates Ranked')).toBeInTheDocument()
-      expect(screen.getByText('Conjunction Events')).toBeInTheDocument()
+      expect(screen.getByText('Close Approaches')).toBeInTheDocument()
     })
 
     // Numbers from mockRunResponse
@@ -681,7 +681,7 @@ describe('ResultsPage Integration', () => {
 
     await waitFor(() => {
       // 1. Run Summary
-      expect(screen.getByText('Candidates Evaluated')).toBeInTheDocument()
+      expect(screen.getByText('Candidates Screened')).toBeInTheDocument()
       // 2. Candidate Results
       expect(screen.getByText('Ranked Deployment Candidates')).toBeInTheDocument()
       // 3. Conjunction Events

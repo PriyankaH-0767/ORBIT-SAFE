@@ -37,8 +37,8 @@ describe('ValidationSummaryPanel Component (Phase P23)', () => {
     expect(screen.getByText('0.450 km')).toBeInTheDocument()
   })
 
-  it('2. renders "N/A" for null metrics instead of replacing with 0', () => {
-    const mockEmptySummary: ValidationSummary = {
+  it('2. renders informative explanation when matched_event_count is 0', () => {
+    const mockZeroMatchSummary: ValidationSummary = {
       d_dato_event_count: 0,
       external_event_count: 0,
       matched_event_count: 0,
@@ -52,7 +52,33 @@ describe('ValidationSummaryPanel Component (Phase P23)', () => {
       max_abs_miss_distance_difference_km: null,
     }
 
-    render(<ValidationSummaryPanel summary={mockEmptySummary} />)
+    render(<ValidationSummaryPanel summary={mockZeroMatchSummary} />)
+
+    // Phase P25 Section L informative copy
+    expect(
+      screen.getByText('No matching conjunction events were found within the configured comparison tolerances.')
+    ).toBeInTheDocument()
+    expect(
+      screen.getByText('This demo produced no paired events suitable for numerical difference metrics.')
+    ).toBeInTheDocument()
+  })
+
+  it('3. renders "N/A" for null metrics when matched events exist but differences cannot be computed', () => {
+    const mockPartialSummary: ValidationSummary = {
+      d_dato_event_count: 1,
+      external_event_count: 1,
+      matched_event_count: 1,
+      d_dato_only_count: 0,
+      external_only_count: 0,
+      external_coverage_percent: null,
+      d_dato_match_rate_percent: null,
+      mean_abs_tca_error_seconds: null,
+      max_abs_tca_error_seconds: null,
+      mean_abs_miss_distance_difference_km: null,
+      max_abs_miss_distance_difference_km: null,
+    }
+
+    render(<ValidationSummaryPanel summary={mockPartialSummary} />)
 
     // All descriptive metrics should be N/A
     const naElements = screen.getAllByText('N/A')

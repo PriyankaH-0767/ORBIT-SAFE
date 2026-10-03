@@ -6,6 +6,8 @@ interface CandidateTableProps {
   selectedCandidateId?: string | null
   onSelectCandidate: (candidate: CandidateResultItem) => void
   isLoading?: boolean
+  comparisonCandidateIds?: string[]
+  onToggleCompare?: (candidate: CandidateResultItem) => void
 }
 
 export const CandidateTable: React.FC<CandidateTableProps> = ({
@@ -13,6 +15,8 @@ export const CandidateTable: React.FC<CandidateTableProps> = ({
   selectedCandidateId,
   onSelectCandidate,
   isLoading = false,
+  comparisonCandidateIds = [],
+  onToggleCompare,
 }) => {
   if (isLoading && candidates.length === 0) {
     return (
@@ -28,6 +32,9 @@ export const CandidateTable: React.FC<CandidateTableProps> = ({
       <table className="w-full text-left border-collapse text-xs font-mono">
         <thead>
           <tr className="border-b border-slate-800 bg-slate-950/80 text-slate-400">
+            {onToggleCompare && (
+              <th className="py-3 px-3 font-semibold text-slate-300 text-center w-20">Compare</th>
+            )}
             <th className="py-3 px-3.5 font-semibold text-slate-300">Rank</th>
             <th className="py-3 px-3.5 font-semibold text-slate-300">Candidate ID</th>
             <th className="py-3 px-3.5 font-semibold text-slate-300">Altitude (km)</th>
@@ -49,6 +56,7 @@ export const CandidateTable: React.FC<CandidateTableProps> = ({
               cand.minimum_miss_distance_km != null
                 ? cand.minimum_miss_distance_km.toFixed(2)
                 : '—'
+            const isCompared = comparisonCandidateIds.includes(cand.candidate_id)
             const eventCount = cand.accepted_event_count ?? 0
 
             return (
@@ -58,9 +66,28 @@ export const CandidateTable: React.FC<CandidateTableProps> = ({
                 className={`transition-colors cursor-pointer ${
                   isSelected
                     ? 'bg-indigo-950/40 text-white border-l-2 border-indigo-500'
+                    : isCompared
+                    ? 'bg-slate-800/40 text-slate-200'
                     : 'hover:bg-slate-800/50 text-slate-300'
                 }`}
               >
+                {onToggleCompare && (
+                  <td className="py-2.5 px-3 text-center" onClick={(e) => e.stopPropagation()}>
+                    <button
+                      type="button"
+                      onClick={() => onToggleCompare(cand)}
+                      title={isCompared ? 'Remove from candidate comparison' : 'Add to candidate comparison'}
+                      aria-label={isCompared ? 'Remove from candidate comparison' : 'Add to candidate comparison'}
+                      className={`px-2 py-0.5 rounded text-[10px] font-mono transition-colors border cursor-pointer ${
+                        isCompared
+                          ? 'bg-indigo-600 text-white border-indigo-400 font-bold'
+                          : 'bg-slate-800 hover:bg-slate-700 text-slate-300 border-slate-700'
+                      }`}
+                    >
+                      {isCompared ? '✓ Added' : '+ Compare'}
+                    </button>
+                  </td>
+                )}
                 <td className="py-2.5 px-3.5 font-bold text-indigo-400">
                   {displayRank}
                 </td>

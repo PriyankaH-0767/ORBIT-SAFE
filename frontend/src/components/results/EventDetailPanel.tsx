@@ -5,11 +5,13 @@ import { formatTCAtoUTC } from '../../utils/date'
 interface EventDetailPanelProps {
   event: EventResultItem | null
   onClose: () => void
+  onInspectInGlobe?: () => void
 }
 
 export const EventDetailPanel: React.FC<EventDetailPanelProps> = ({
   event,
   onClose,
+  onInspectInGlobe,
 }) => {
   if (!event) return null
 
@@ -24,22 +26,34 @@ export const EventDetailPanel: React.FC<EventDetailPanelProps> = ({
       <div className="flex items-center justify-between border-b border-slate-800 pb-2">
         <div className="flex items-center space-x-2">
           <span className="w-2 h-2 rounded-full bg-amber-400" />
-          <h4 className="text-sm font-bold text-white font-mono">
-            Conjunction Event Details
+          <h4 className="text-sm font-bold text-white font-mono uppercase tracking-wide">
+            Event Investigation
           </h4>
           {event.id && (
             <span className="text-[11px] text-slate-400">({event.id})</span>
           )}
         </div>
 
-        <button
-          type="button"
-          onClick={onClose}
-          className="text-slate-400 hover:text-white p-1 rounded hover:bg-slate-800 transition-colors"
-          aria-label="Close event detail"
-        >
-          ✕
-        </button>
+        <div className="flex items-center space-x-2">
+          {onInspectInGlobe && (
+            <button
+              type="button"
+              onClick={onInspectInGlobe}
+              className="px-2.5 py-1 bg-cyan-950/80 hover:bg-cyan-900/90 text-cyan-300 border border-cyan-800/80 font-bold text-[11px] rounded transition-colors flex items-center space-x-1 cursor-pointer"
+            >
+              <span>Inspect spatial geometry in the 3D Globe</span>
+              <span>↓</span>
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={onClose}
+            className="text-slate-400 hover:text-white p-1 rounded hover:bg-slate-800 transition-colors"
+            aria-label="Close event detail"
+          >
+            ✕
+          </button>
+        </div>
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
@@ -101,7 +115,7 @@ export const EventDetailPanel: React.FC<EventDetailPanelProps> = ({
         </div>
       </div>
       <p className="text-[10px] text-slate-500 italic">
-        Informational event inspection. A future 3D visualization phase will utilize this event geometry.
+        Informational event inspection. This close-approach event can be inspected spatially in the 3D Globe section.
       </p>
     </div>
   )

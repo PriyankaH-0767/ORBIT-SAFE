@@ -7,6 +7,7 @@ export interface OrbitGlobeProps {
   globeData: GlobeResponse | null
   selectedCandidateId?: string | null
   selectedEventId?: string | null
+  comparisonCandidateIds?: string[]
   showDebris: boolean
   isPlaying: boolean
   playbackSpeed: number
@@ -17,10 +18,20 @@ export interface OrbitGlobeProps {
   isLoading?: boolean
 }
 
+// Distinct orbital colors for multi-candidate comparison
+const CANDIDATE_COLOR_PALETTE = [
+  { css: '#00F0FF', name: 'Electric Cyan' },
+  { css: '#10B981', name: 'Emerald' },
+  { css: '#F59E0B', name: 'Amber' },
+  { css: '#A855F7', name: 'Purple' },
+  { css: '#EC4899', name: 'Rose' },
+]
+
 export const OrbitGlobe: React.FC<OrbitGlobeProps> = ({
   globeData,
   selectedCandidateId,
   selectedEventId,
+  comparisonCandidateIds = [],
   showDebris,
   isPlaying,
   playbackSpeed,
@@ -160,7 +171,14 @@ export const OrbitGlobe: React.FC<OrbitGlobeProps> = ({
     }
     viewer.clock.onTick.addEventListener(onTickCallback)
 
-    // Handle container resize
+    // Handle window and container resize safely
+    const handleWindowResize = () => {
+      if (!viewer.isDestroyed()) {
+        viewer.resize()
+      }
+    }
+    window.addEventListener('resize', handleWindowResize)
+
     const resizeObserver = new ResizeObserver(() => {
       if (!viewer.isDestroyed()) {
         viewer.resize()
@@ -172,6 +190,7 @@ export const OrbitGlobe: React.FC<OrbitGlobeProps> = ({
     onViewerReadyRef.current?.(viewer)
 
     return () => {
+      window.removeEventListener('resize', handleWindowResize)
       resizeObserver.disconnect()
       if (clickHandlerRef.current && !clickHandlerRef.current.isDestroyed()) {
         clickHandlerRef.current.destroy()
@@ -222,8 +241,9 @@ export const OrbitGlobe: React.FC<OrbitGlobeProps> = ({
     }
 
     // A. Render Candidate Tracks
-    globeData.candidates.forEach((track: GlobeCandidateTrack) => {
+    globeData.candidates.forEach((track: GlobeCandidateTrack, idx: number) => {
       const isSelected = selectedCandidateId === track.candidate_id
+      const isCompared = comparisonCandidateIds.includes(track.candidate_id)
       const positions: Cesium.Cartesian3[] = []
       const positionProp = new Cesium.SampledPositionProperty()
 
@@ -234,15 +254,30 @@ export const OrbitGlobe: React.FC<OrbitGlobeProps> = ({
         positionProp.addSample(julian, fixedPos)
       })
 
+      // Distinct color based on candidate rank or index
+      const colorIndex =
+        track.rank != null
+          ? (track.rank - 1) % CANDIDATE_COLOR_PALETTE.length
+          : idx % CANDIDATE_COLOR_PALETTE.length
+      const baseCesiumColor = Cesium.Color.fromCssColorString(
+        CANDIDATE_COLOR_PALETTE[colorIndex].css
+      )
+
+      const orbitColor = isSelected
+        ? Cesium.Color.WHITE
+        : isCompared
+        ? baseCesiumColor
+        : baseCesiumColor.withAlpha(0.65)
+
+      const orbitWidth = isSelected ? 3.8 : isCompared ? 3.0 : 1.8
+
       // Full static trajectory loop
       viewer.entities.add({
         id: `candidate-orbit-${track.candidate_id}`,
         polyline: {
           positions,
-          width: isSelected ? 3.5 : 1.8,
-          material: isSelected
-            ? Cesium.Color.WHITE
-            : Cesium.Color.CYAN.withAlpha(0.85),
+          width: orbitWidth,
+          material: orbitColor,
         },
         properties: {
           candidate_id: track.candidate_id,
@@ -262,18 +297,22 @@ export const OrbitGlobe: React.FC<OrbitGlobeProps> = ({
         id: `candidate-marker-${track.candidate_id}`,
         position: positionProp,
         point: {
-          pixelSize: isSelected ? 9 : 6,
-          color: isSelected ? Cesium.Color.WHITE : Cesium.Color.CYAN,
+          pixelSize: isSelected ? 10 : isCompared ? 8 : 6,
+          color: isSelected ? Cesium.Color.WHITE : baseCesiumColor,
           outlineColor: Cesium.Color.BLACK,
           outlineWidth: 1.5,
         },
         label: {
-          text: track.rank != null ? `Rank ${track.rank}` : `Cand ${track.candidate_id}`,
-          font: '11px monospace',
-          fillColor: isSelected ? Cesium.Color.WHITE : Cesium.Color.CYAN,
-          pixelOffset: new Cesium.Cartesian2(0, -12),
+          text: isCompared
+            ? `[COMPARE] Rank ${track.rank ?? track.candidate_id.slice(0, 6)}`
+            : track.rank != null
+            ? `Rank ${track.rank}`
+            : `Cand ${track.candidate_id.slice(0, 6)}`,
+          font: isCompared ? 'bold 12px monospace' : '11px monospace',
+          fillColor: isSelected ? Cesium.Color.WHITE : baseCesiumColor,
+          pixelOffset: new Cesium.Cartesian2(0, isCompared ? -15 : -12),
           showBackground: true,
-          backgroundColor: Cesium.Color.BLACK.withAlpha(0.75),
+          backgroundColor: Cesium.Color.BLACK.withAlpha(0.8),
         },
         properties: {
           candidate_id: track.candidate_id,
@@ -389,7 +428,21 @@ export const OrbitGlobe: React.FC<OrbitGlobeProps> = ({
         },
       })
     })
-  }, [globeData, selectedCandidateId, selectedEventId, showDebris])
+  }, [globeData, selectedCandidateId, selectedEventId, showDebris, comparisonCandidateIds])
+
+  // 4. Smooth camera focus on selected candidate (Section I)
+  useEffect(() => {
+    const viewer = viewerRef.current
+    if (!viewer || viewer.isDestroyed() || !selectedCandidateId) return
+    const orbitEntity = viewer.entities.getById(`candidate-orbit-${selectedCandidateId}`)
+    if (orbitEntity) {
+      viewer.flyTo(orbitEntity, {
+        duration: 1.0,
+      }).catch(() => {
+        // Safe no-op if user interaction cancels flyTo animation
+      })
+    }
+  }, [selectedCandidateId])
 
   // Camera reset helper
   const handleResetCamera = useCallback(() => {

@@ -27,6 +27,16 @@ export const GlobeLegend: React.FC = () => {
           <span className="inline-block w-4 h-0.5 bg-white border-b-2 border-dotted border-cyan-300"></span>
           <span className="text-slate-400">Selected candidate highlight</span>
         </div>
+
+        <div className="flex items-center space-x-2">
+          <div className="flex -space-x-1">
+            <span className="inline-block w-2.5 h-1.5 rounded-sm bg-cyan-400"></span>
+            <span className="inline-block w-2.5 h-1.5 rounded-sm bg-emerald-400"></span>
+            <span className="inline-block w-2.5 h-1.5 rounded-sm bg-amber-400"></span>
+            <span className="inline-block w-2.5 h-1.5 rounded-sm bg-purple-400"></span>
+          </div>
+          <span className="text-indigo-300">Multi-candidate comparison palette</span>
+        </div>
       </div>
 
       <div className="border-t border-slate-800/80 pt-2 space-y-1 text-[11px] text-slate-400">

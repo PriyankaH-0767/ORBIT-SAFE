@@ -29,10 +29,10 @@ describe('CandidateDetailPanel Component', () => {
     expect(screen.getByText('Rank 1')).toBeInTheDocument()
     expect(screen.getByText('Candidate: cand-042')).toBeInTheDocument()
     expect(screen.getByText('550.25 km')).toBeInTheDocument()
-    expect(screen.getByText('97.50°')).toBeInTheDocument()
+    expect(screen.getAllByText('97.50°').length).toBeGreaterThanOrEqual(1)
     expect(screen.getByText('180.25°')).toBeInTheDocument()
     expect(screen.getByText('45.10°')).toBeInTheDocument()
-    expect(screen.getByText('20.0 min')).toBeInTheDocument()
+    expect(screen.getAllByText('20.0 min').length).toBeGreaterThanOrEqual(1)
     expect(screen.getByText('48.75 m/s')).toBeInTheDocument()
     expect(screen.getByText('3.821 kg')).toBeInTheDocument()
     expect(screen.getByText('3.82%')).toBeInTheDocument()
@@ -41,6 +41,11 @@ describe('CandidateDetailPanel Component', () => {
     expect(screen.getByText('3')).toBeInTheDocument()
     expect(screen.getByText('6.42 km')).toBeInTheDocument()
     expect(screen.getByText('nominal')).toBeInTheDocument()
+
+    // Phase P25 Section G: Candidate Explanation Panel
+    expect(screen.getByText('Why is this candidate ranked here?')).toBeInTheDocument()
+    expect(screen.getByText(/relatively low/i)).toBeInTheDocument()
+    expect(screen.getByText(/estimated propulsion demand within the configured budget/i)).toBeInTheDocument()
   })
 
   it('calls onClose when close button is clicked', () => {

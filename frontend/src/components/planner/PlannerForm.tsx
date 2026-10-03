@@ -1,6 +1,8 @@
 import React, { useState, useMemo } from 'react'
 import { FormField } from './FormField'
 import { CandidatePreview } from './CandidatePreview'
+import { MissionPresets } from './MissionPresets'
+import { MISSION_PRESETS, type MissionPreset } from '../../types/presets'
 import { calculateCandidateCount, MAX_CANDIDATES } from '../../utils/grid'
 import { DEFAULT_PLAN_FORM, type PlanCreateRequest } from '../../types/plan'
 
@@ -9,6 +11,8 @@ interface PlannerFormProps {
   onSubmit: (values: PlanCreateRequest) => Promise<void>
   isSubmitting?: boolean
   apiError?: string | null
+  onOpenDemo?: () => Promise<void>
+  isDemoLoading?: boolean
 }
 
 export const PlannerForm: React.FC<PlannerFormProps> = ({
@@ -16,11 +20,32 @@ export const PlannerForm: React.FC<PlannerFormProps> = ({
   onSubmit,
   isSubmitting = false,
   apiError = null,
+  onOpenDemo,
+  isDemoLoading = false,
 }) => {
   const [form, setForm] = useState<PlanCreateRequest>(initialValues || DEFAULT_PLAN_FORM)
+  const [activePresetId, setActivePresetId] = useState<string>('sso_demo')
 
   const updateField = <K extends keyof PlanCreateRequest>(key: K, value: PlanCreateRequest[K]) => {
+    setActivePresetId('custom')
     setForm((prev) => ({ ...prev, [key]: value }))
+  }
+
+  const handleSelectPreset = (preset: MissionPreset) => {
+    setActivePresetId(preset.id)
+    if (preset.id !== 'custom' && preset.values) {
+      setForm((prev) => ({
+        ...prev,
+        ...preset.values,
+      }))
+    }
+  }
+
+  const handleTryDemo = () => {
+    const ssoPreset = MISSION_PRESETS.find((p) => p.id === 'sso_demo')
+    if (ssoPreset) {
+      handleSelectPreset(ssoPreset)
+    }
   }
 
   // Client-side validations
@@ -102,6 +127,7 @@ export const PlannerForm: React.FC<PlannerFormProps> = ({
   }
 
   const handleReset = () => {
+    setActivePresetId('sso_demo')
     setForm(DEFAULT_PLAN_FORM)
   }
 
@@ -111,6 +137,64 @@ export const PlannerForm: React.FC<PlannerFormProps> = ({
         <div className="p-4 rounded-lg bg-rose-950/40 border border-rose-800 text-rose-300 text-sm flex items-start space-x-2">
           <span className="font-bold text-rose-400">Error:</span>
           <span>{apiError}</span>
+        </div>
+      )}
+
+      {/* Mission Presets & Quickstart Demo (Phase P25/P28) */}
+      <MissionPresets
+        activePresetId={activePresetId}
+        onSelectPreset={handleSelectPreset}
+        onTryDemo={onOpenDemo ?? handleTryDemo}
+        disabled={isSubmitting || isDemoLoading}
+        isDemoLoading={isDemoLoading}
+      />
+
+      {/* Part 14: 2-Minute Demo Path Visual Guidance */}
+      {activePresetId === 'sso_demo' && (
+        <div
+          data-testid="demo-path-guide"
+          className="p-3.5 bg-slate-900/90 border border-cyan-800/80 rounded-xl space-y-2 font-mono shadow-md"
+        >
+          <div className="flex items-center justify-between text-xs border-b border-slate-800 pb-1.5">
+            <div className="flex items-center space-x-2 text-cyan-300 font-bold">
+              <span className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse" />
+              <span>GUIDED DEMO PATH (2-Minute Workflow)</span>
+            </div>
+            <span className="text-[11px] text-slate-400">Step 2 of 7 active</span>
+          </div>
+
+          <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-1.5 text-center text-[10px]">
+            <div className="p-2 rounded bg-slate-950/60 border border-emerald-500/40 text-emerald-400">
+              <div className="font-semibold">STEP 1</div>
+              <div className="text-slate-300">Choose Demo Mission</div>
+              <div className="text-[9px] text-emerald-400 mt-0.5">✓ Ready</div>
+            </div>
+            <div className="p-2 rounded bg-cyan-950/40 border border-cyan-500 text-cyan-300">
+              <div className="font-semibold">STEP 2</div>
+              <div className="text-white">Review Mission Envelope</div>
+              <div className="text-[9px] text-cyan-400 mt-0.5">● Active</div>
+            </div>
+            <div className="p-2 rounded bg-slate-950/60 border border-slate-800 text-slate-400">
+              <div className="font-semibold">STEP 3</div>
+              <div className="text-slate-300">Launch Screening</div>
+            </div>
+            <div className="p-2 rounded bg-slate-950/60 border border-slate-800 text-slate-400">
+              <div className="font-semibold">STEP 4</div>
+              <div className="text-slate-300">Inspect Results</div>
+            </div>
+            <div className="p-2 rounded bg-slate-950/60 border border-slate-800 text-slate-400">
+              <div className="font-semibold">STEP 5</div>
+              <div className="text-slate-300">Explore Heatmap + Globe</div>
+            </div>
+            <div className="p-2 rounded bg-slate-950/60 border border-slate-800 text-slate-400">
+              <div className="font-semibold">STEP 6</div>
+              <div className="text-slate-300">Validate</div>
+            </div>
+            <div className="p-2 rounded bg-slate-950/60 border border-slate-800 text-slate-400">
+              <div className="font-semibold">STEP 7</div>
+              <div className="text-slate-300">Export</div>
+            </div>
+          </div>
         </div>
       )}
 
@@ -133,6 +217,13 @@ export const PlannerForm: React.FC<PlannerFormProps> = ({
           <span className="text-[11px] font-mono text-slate-400 bg-slate-800 px-2 py-0.5 rounded">
             Grid Space
           </span>
+        </div>
+
+        {/* Section A Technical Helper Text (P25) */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-2 text-[11px] text-cyan-300/90 bg-slate-950/60 p-2.5 rounded-lg border border-slate-800/80">
+          <div><strong className="text-white">Altitude:</strong> Defines the candidate orbital altitude range to evaluate.</div>
+          <div><strong className="text-white">Inclination:</strong> Defines the orbital-plane orientation range.</div>
+          <div><strong className="text-white">Deployment Delay:</strong> Represents possible deployment timing differences.</div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -224,6 +315,11 @@ export const PlannerForm: React.FC<PlannerFormProps> = ({
           </p>
         </div>
 
+        {/* Section B Technical Helper Text (P25) */}
+        <div className="text-[11px] text-cyan-300/90 bg-slate-950/60 p-2.5 rounded-lg border border-slate-800/80">
+          <strong className="text-white">Perturbations & Release:</strong> Configures initial right ascension of ascending node (RAAN), argument of latitude at release (u₀), and Earth J2 nodal precession coupling rate.
+        </div>
+
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <FormField
             id="raan_deg"
@@ -263,6 +359,11 @@ export const PlannerForm: React.FC<PlannerFormProps> = ({
           </p>
         </div>
 
+        {/* Section C Technical Helper Text (P25) */}
+        <div className="text-[11px] text-cyan-300/90 bg-slate-950/60 p-2.5 rounded-lg border border-slate-800/80">
+          <strong className="text-white">Screening Duration:</strong> Sets how long candidate/debris geometry is screened (1–7 days recommended for numerical efficiency).
+        </div>
+
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <FormField
             id="epoch_start"
@@ -296,6 +397,12 @@ export const PlannerForm: React.FC<PlannerFormProps> = ({
           <p className="text-xs text-slate-400 mt-0.5">
             Baseline injection orbit and spacecraft maneuver capabilities.
           </p>
+        </div>
+
+        {/* Section D Technical Helper Text (P25) */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-[11px] text-cyan-300/90 bg-slate-950/60 p-2.5 rounded-lg border border-slate-800/80">
+          <div><strong className="text-white">Delta-V Budget:</strong> Defines the propulsion budget used for candidate budget checks.</div>
+          <div><strong className="text-white">Spacecraft Mass & Isp:</strong> Determines propellant consumption via the Tsiolkovsky rocket equation.</div>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
@@ -351,6 +458,11 @@ export const PlannerForm: React.FC<PlannerFormProps> = ({
           <p className="text-xs text-slate-400 mt-0.5">
             Weights balancing fuel expenditure vs. close-approach debris risk (must sum to 1.0).
           </p>
+        </div>
+
+        {/* Section E Technical Helper Text (P25) */}
+        <div className="text-[11px] text-cyan-300/90 bg-slate-950/60 p-2.5 rounded-lg border border-slate-800/80">
+          <strong className="text-white">Weights:</strong> Controls the relative emphasis of fuel and screening-risk indicators in multi-objective ranking.
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -431,6 +543,57 @@ export const PlannerForm: React.FC<PlannerFormProps> = ({
                 Uses local deterministic catalog fixtures without external network calls
               </span>
             </label>
+          </div>
+        </div>
+      </div>
+
+      {/* SECTION E — Mission Search Space Summary Strip (Phase P25) */}
+      <div
+        data-testid="mission-summary-strip"
+        className="p-4 bg-slate-950/90 border border-cyan-800/60 rounded-xl shadow-md font-mono text-xs text-slate-300 space-y-2.5"
+      >
+        <div className="flex items-center justify-between border-b border-slate-800 pb-2">
+          <div className="flex items-center space-x-2">
+            <span className="w-2 h-2 rounded-full bg-cyan-400" />
+            <span className="font-bold text-white uppercase tracking-wider text-[11px]">
+              Mission Search Space Summary
+            </span>
+          </div>
+          <span className="text-[10px] text-cyan-400 font-semibold px-2 py-0.5 rounded bg-cyan-950/60 border border-cyan-800">
+            {activePresetId === 'sso_demo' ? 'Sun-Synchronous LEO Demo' : activePresetId === 'low_leo' ? 'Low LEO Screening' : 'Custom Mission'}
+          </span>
+        </div>
+
+        <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-7 gap-2 text-[11px]">
+          <div className="p-2 bg-slate-900/80 rounded border border-slate-800">
+            <span className="text-[10px] text-slate-400 block uppercase">Altitude</span>
+            <span className="font-bold text-slate-100">{form.altitude_min_km}–{form.altitude_max_km} km</span>
+          </div>
+          <div className="p-2 bg-slate-900/80 rounded border border-slate-800">
+            <span className="text-[10px] text-slate-400 block uppercase">Inclination</span>
+            <span className="font-bold text-slate-100">{form.inclination_min_deg}–{form.inclination_max_deg}°</span>
+          </div>
+          <div className="p-2 bg-slate-900/80 rounded border border-slate-800">
+            <span className="text-[10px] text-slate-400 block uppercase">Delay</span>
+            <span className="font-bold text-slate-100">{form.delay_min_minutes}–{form.delay_max_minutes} min</span>
+          </div>
+          <div className="p-2 bg-slate-900/80 rounded border border-slate-800">
+            <span className="text-[10px] text-slate-400 block uppercase">Candidates</span>
+            <span className={`font-bold ${isGridOverLimit ? 'text-rose-400' : 'text-cyan-300'}`}>
+              {candidateCount} / {MAX_CANDIDATES}
+            </span>
+          </div>
+          <div className="p-2 bg-slate-900/80 rounded border border-slate-800">
+            <span className="text-[10px] text-slate-400 block uppercase">Screening</span>
+            <span className="font-bold text-slate-100">{form.screening_days} days</span>
+          </div>
+          <div className="p-2 bg-slate-900/80 rounded border border-slate-800">
+            <span className="text-[10px] text-slate-400 block uppercase">Fuel Weight</span>
+            <span className="font-bold text-slate-100">{(form.fuel_weight * 100).toFixed(0)}%</span>
+          </div>
+          <div className="p-2 bg-slate-900/80 rounded border border-slate-800">
+            <span className="text-[10px] text-slate-400 block uppercase">Risk Weight</span>
+            <span className="font-bold text-slate-100">{(form.risk_weight * 100).toFixed(0)}%</span>
           </div>
         </div>
       </div>

@@ -41,8 +41,10 @@ export const ValidationSection: React.FC<ValidationSectionProps> = ({
         <div>
           <h3
             id="validation-heading"
-            className="text-base font-bold text-white font-mono flex items-center space-x-2"
+            className="text-base font-bold text-white font-mono flex flex-wrap items-center gap-2"
           >
+            <span className="text-cyan-400">REFERENCE COMPARISON</span>
+            <span className="text-slate-500 hidden sm:inline">•</span>
             <span>External Reference Validation</span>
             {validation && (
               <span className="text-xs px-2 py-0.5 rounded bg-cyan-950/80 text-cyan-300 border border-cyan-800/80 font-normal">
@@ -50,8 +52,8 @@ export const ValidationSection: React.FC<ValidationSectionProps> = ({
               </span>
             )}
           </h3>
-          <p className="text-xs text-slate-400 font-mono mt-0.5">
-            Audit and benchmark comparison against independent external close-approach databases (SOCRATES).
+          <p className="text-xs text-cyan-300/90 font-mono mt-0.5">
+            Compare D-DATO event findings with the selected external reference dataset.
           </p>
         </div>
 
@@ -66,6 +68,29 @@ export const ValidationSection: React.FC<ValidationSectionProps> = ({
 
       {isOpen && (
         <div className="space-y-6">
+          {/* Part 12: 3-Step Validation Story Explanation */}
+          <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-4 font-mono">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 items-center text-center">
+              <div className="p-3 bg-slate-950/70 border border-cyan-900/40 rounded-lg">
+                <div className="text-[10px] text-slate-500 uppercase tracking-wider mb-0.5">Step 1</div>
+                <div className="text-xs font-bold text-cyan-300">D-DATO EVENTS</div>
+                <p className="text-[11px] text-slate-400 mt-1 font-sans">Screened close-approach candidates</p>
+              </div>
+              <div className="p-3 bg-slate-950/70 border border-indigo-900/40 rounded-lg relative">
+                <div className="text-[10px] text-slate-500 uppercase tracking-wider mb-0.5">Step 2</div>
+                <div className="text-xs font-bold text-indigo-300">MATCHING CRITERIA</div>
+                <p className="text-[11px] text-slate-400 mt-1 font-sans">Configured time (Δt) & miss distance (Δd) tolerances</p>
+              </div>
+              <div className="p-3 bg-slate-950/70 border border-emerald-900/40 rounded-lg">
+                <div className="text-[10px] text-slate-500 uppercase tracking-wider mb-0.5">Step 3</div>
+                <div className="text-xs font-bold text-emerald-300">REFERENCE COMPARISON</div>
+                <p className="text-[11px] text-slate-400 mt-1 font-sans">Benchmark pairing against external catalog events</p>
+              </div>
+            </div>
+            <p className="text-xs text-slate-300 mt-3 pt-3 border-t border-slate-800/80 font-sans leading-relaxed">
+              The comparison checks whether D-DATO events can be paired with external reference events within configured temporal and spatial tolerances.
+            </p>
+          </div>
           {/* Loading Initial State */}
           {isLoading ? (
             <div className="bg-slate-900/40 border border-slate-800 rounded-xl p-8 text-center space-y-3 font-mono">

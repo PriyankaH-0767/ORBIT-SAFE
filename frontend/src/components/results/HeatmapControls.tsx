@@ -1,12 +1,22 @@
 import React from 'react'
 import type { HeatmapResponse, HeatmapLayer } from '../../types/heatmap'
 
+interface SelectedCandidateSummary {
+  altitude_km: number
+  inclination_deg: number
+  deployment_delay_minutes?: number
+  delay_minutes?: number
+  risk_score?: number
+  screening_risk_score?: number
+}
+
 interface HeatmapControlsProps {
   heatmapData: HeatmapResponse
   selectedLayer: HeatmapLayer | null
   selectedInclination: number | null
   onSelectInclination: (inclination: number) => void
   isLoading?: boolean
+  selectedCandidate?: SelectedCandidateSummary | null
 }
 
 export const HeatmapControls: React.FC<HeatmapControlsProps> = ({
@@ -15,6 +25,7 @@ export const HeatmapControls: React.FC<HeatmapControlsProps> = ({
   selectedInclination,
   onSelectInclination,
   isLoading = false,
+  selectedCandidate = null,
 }) => {
   const inclinationOptions = heatmapData.inclination_values_deg || []
 
@@ -34,6 +45,29 @@ export const HeatmapControls: React.FC<HeatmapControlsProps> = ({
       data-testid="heatmap-controls"
       className="p-4 bg-slate-900/80 border border-slate-800 rounded-xl space-y-3 font-mono text-xs"
     >
+      {/* Part 9: Explanatory bar */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 px-3 py-2 bg-slate-950/80 border border-slate-800 rounded-lg text-xs">
+        <div className="flex items-center space-x-2 text-slate-300">
+          <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse" />
+          <span>Each cell represents one candidate configuration in the current inclination layer.</span>
+        </div>
+        {selectedCandidate ? (
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-slate-400">
+            <span className="text-cyan-400 font-semibold">SELECTED:</span>
+            <span>ALTITUDE: <strong className="text-white font-mono">{selectedCandidate.altitude_km.toFixed(1)} km</strong></span>
+            <span>DEPLOYMENT DELAY: <strong className="text-white font-mono">{(selectedCandidate.deployment_delay_minutes ?? selectedCandidate.delay_minutes ?? 0).toFixed(0)} min</strong></span>
+            <span>INCLINATION: <strong className="text-white font-mono">{selectedCandidate.inclination_deg.toFixed(1)}°</strong></span>
+            {(selectedCandidate.risk_score != null || selectedCandidate.screening_risk_score != null) && (
+              <span>RISK SCORE: <strong className="text-indigo-300 font-mono">{(selectedCandidate.risk_score ?? selectedCandidate.screening_risk_score)?.toFixed(1)}</strong></span>
+            )}
+          </div>
+        ) : (
+          <div className="text-[11px] text-slate-500 italic">
+            Click a cell to inspect candidate telemetry & sync 3D orbit
+          </div>
+        )}
+      </div>
+
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         {/* Inclination Slice Dropdown */}
         <div className="flex items-center space-x-2.5">
