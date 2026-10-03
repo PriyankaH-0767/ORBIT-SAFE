@@ -1,0 +1,11 @@
+{
+  "name": "Reference LEO Deployment Plan",
+  "target_altitude_km": 550.0,
+  "target_inclination_deg": 53.0,
+  "target_eccentricity": 0.0005,
+  "target_raan_deg": 120.0,
+  "satellite_mass_kg": 150.0,
+  "propulsion_isp_s": 220.0,
+  "window_start": "2026-10-15T00:00:00Z",
+  "window_end": "2026-10-16T00:00:00Z"
+}

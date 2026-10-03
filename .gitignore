@@ -1,0 +1,70 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Distribution / packaging
+build/
+dist/
+dist-ssr/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual Environments
+venv/
+.venv/
+env/
+ENV/
+backend/venv/
+backend/.venv/
+**/venv/
+**/.venv/
+
+# Environment Variables & Secrets
+.env
+.env.*
+!.env.example
+**/.env
+**/.env.*
+!**/.env.example
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+d_dato.db
+
+# Node & Frontend dependencies & build outputs
+node_modules/
+**/node_modules/
+frontend/dist/
+
+# IDEs & Editors
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# Testing & Coverage
+.pytest_cache/
+**/.pytest_cache/
+.coverage
+.coverage.*
+coverage/
+htmlcov/
+
+# Logs & Temporary files
+*.log
+logs/
+scratch/
+*.tmp
+
+# Generated exports and test media artifacts
+*.zip
+*.pdf
+*.webp

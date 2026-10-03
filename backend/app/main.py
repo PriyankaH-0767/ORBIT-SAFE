@@ -1,0 +1,77 @@
+"""D-DATO FastAPI Application Entrypoint."""
+
+from contextlib import asynccontextmanager
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+
+from app.api.v1 import api_router
+from app.core.config import settings
+from app.db import init_db
+from app.utils.logging import get_logger, setup_logging
+
+logger = get_logger("main")
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Lifespan context manager for application startup and shutdown lifecycle events."""
+    setup_logging(settings.LOG_LEVEL)
+    logger.info(
+        "Starting %s v%s (environment: %s, debug: %s)",
+        settings.APP_NAME,
+        settings.APP_VERSION,
+        settings.ENVIRONMENT,
+        settings.DEBUG,
+    )
+    init_db()
+    yield
+    logger.info("Shutting down %s", settings.APP_NAME)
+
+
+def create_application() -> FastAPI:
+    """Factory function to initialize and configure the FastAPI application."""
+    application = FastAPI(
+        title="D-DATO API",
+        description=(
+            "D-DATO (Debris-Aware Orbit & Deployment-Window Planner) is an "
+            "early-stage astrodynamics screening and planning tool designed to evaluate "
+            "candidate satellite deployment windows and orbital insertion parameters against "
+            "cataloged space debris."
+        ),
+        version=settings.APP_VERSION,
+        docs_url="/docs",
+        redoc_url="/redoc",
+        openapi_url="/openapi.json",
+        lifespan=lifespan,
+    )
+
+    # Configure CORS for local development and UI integration
+    application.add_middleware(
+        CORSMiddleware,
+        allow_origins=["*"],
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
+
+    # Mount API v1 router
+    application.include_router(api_router, prefix=settings.API_V1_PREFIX)
+
+    return application
+
+
+app = create_application()
+
+
+@app.get("/", tags=["Root"])
+def root():
+    """Root endpoint providing service metadata and documentation links."""
+    return {
+        "service": settings.APP_NAME,
+        "version": settings.APP_VERSION,
+        "status": "operational",
+        "docs_url": "/docs",
+        "redoc_url": "/redoc",
+        "openapi_url": "/openapi.json",
+        "health_url": f"{settings.API_V1_PREFIX}/health",
+    }
