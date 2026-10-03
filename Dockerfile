@@ -5,6 +5,7 @@ WORKDIR /app/frontend
 COPY frontend/package*.json ./
 RUN npm install
 COPY frontend/ ./
+ENV VITE_API_BASE_URL=""
 RUN npm run build
 
 # Stage 2: Python Backend & Unified Production Runtime
@@ -31,7 +32,8 @@ COPY --from=frontend-builder /app/frontend/dist ./frontend/dist
 ENV PYTHONUNBUFFERED=1 \
     DEMO_MODE=true \
     PORT=8000 \
-    PYTHONPATH=/app/backend
+    PYTHONPATH=/app/backend \
+    DEMO_DATA_DIR=/app/demo_data
 
 WORKDIR /app/backend
 

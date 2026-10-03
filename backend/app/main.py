@@ -54,7 +54,7 @@ def create_application() -> FastAPI:
     application.add_middleware(
         CORSMiddleware,
         allow_origins=["*"],
-        allow_credentials=True,
+        allow_credentials=False,
         allow_methods=["*"],
         allow_headers=["*"],
     )
@@ -68,7 +68,16 @@ def create_application() -> FastAPI:
 app = create_application()
 
 # Monorepo frontend static assets detection
-FRONTEND_DIST_DIR = Path(__file__).resolve().parents[2] / "frontend" / "dist"
+_FRONTEND_CANDIDATES = [
+    Path(__file__).resolve().parents[2] / "frontend" / "dist",
+    Path(__file__).resolve().parents[1] / "frontend" / "dist",
+    Path.cwd() / "frontend" / "dist",
+    Path("/app/frontend/dist"),
+]
+FRONTEND_DIST_DIR = next(
+    (p for p in _FRONTEND_CANDIDATES if p.exists() and (p / "index.html").exists()),
+    _FRONTEND_CANDIDATES[0],
+)
 INDEX_HTML = FRONTEND_DIST_DIR / "index.html"
 
 if FRONTEND_DIST_DIR.exists() and INDEX_HTML.exists():
@@ -85,7 +94,7 @@ if FRONTEND_DIST_DIR.exists() and INDEX_HTML.exists():
 def root(request: Request):
     """Root endpoint providing service metadata or UI entrypoint for browser sessions."""
     accept = request.headers.get("accept", "")
-    if "text/html" in accept and INDEX_HTML.exists():
+    if INDEX_HTML.exists() and "application/json" not in accept:
         return FileResponse(str(INDEX_HTML))
     return {
         "service": settings.APP_NAME,

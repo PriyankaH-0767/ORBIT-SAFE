@@ -1,0 +1,91 @@
+{
+  "_metadata": {
+    "source": "SOCRATES",
+    "description": "Synthetic deterministic SOCRATES validation reference dataset for D-DATO Phase P16 testing and offline demo mode.",
+    "is_synthetic": true,
+    "provenance": "socrates_demo_fixture",
+    "fetched_at": "2026-10-02T00:00:00Z"
+  },
+  "events": [
+    {
+      "external_id": "SOC-DEMO-001",
+      "candidate_identifier": "CAND_SSO_01",
+      "debris_norad_id": "700001",
+      "tca": "2026-10-04T03:29:28.753588Z",
+      "miss_distance_km": 13.749,
+      "relative_velocity_km_s": 14.2,
+      "raw_reference": {
+        "report_id": "SOC-2026-RPT-101",
+        "description": "Close approach between candidate and MODERN 6-DIGIT TEST DEBRIS",
+        "primary_norad": "99001",
+        "secondary_norad": "700001",
+        "min_range_km": 13.749,
+        "rel_vel_km_s": 14.2
+      }
+    },
+    {
+      "external_id": "SOC-DEMO-002",
+      "candidate_identifier": "CAND_SSO_02",
+      "debris_norad_id": "700001",
+      "tca": "2026-10-04T04:17:50.000000Z",
+      "miss_distance_km": 18.5,
+      "relative_velocity_km_s": 14.1,
+      "raw_reference": {
+        "report_id": "SOC-2026-RPT-102",
+        "description": "Close approach between candidate and MODERN 6-DIGIT TEST DEBRIS with 13s TCA offset",
+        "primary_norad": "99002",
+        "secondary_norad": "700001",
+        "min_range_km": 18.5,
+        "rel_vel_km_s": 14.1
+      }
+    },
+    {
+      "external_id": "SOC-DEMO-003",
+      "candidate_identifier": null,
+      "debris_norad_id": "25544",
+      "tca": "2026-10-03T14:30:00.000000Z",
+      "miss_distance_km": null,
+      "relative_velocity_km_s": 10.5,
+      "raw_reference": {
+        "report_id": "SOC-2026-RPT-103",
+        "description": "Validation event with unknown or uncomputed miss distance",
+        "primary_norad": "99003",
+        "secondary_norad": "25544",
+        "min_range_km": null,
+        "rel_vel_km_s": 10.5
+      }
+    },
+    {
+      "external_id": "SOC-DEMO-004",
+      "candidate_identifier": null,
+      "debris_norad_id": "99999",
+      "tca": "2026-10-04T12:00:00.000000Z",
+      "miss_distance_km": 8.2,
+      "relative_velocity_km_s": 9.8,
+      "raw_reference": {
+        "report_id": "SOC-2026-RPT-104",
+        "description": "External-only reference event not present in D-DATO screening results",
+        "primary_norad": "99004",
+        "secondary_norad": "99999",
+        "min_range_km": 8.2,
+        "rel_vel_km_s": 9.8
+      }
+    },
+    {
+      "external_id": "SOC-DEMO-005",
+      "candidate_identifier": null,
+      "debris_norad_id": "25942",
+      "tca": "2026-10-05T01:30:00.000000Z",
+      "miss_distance_km": 22.1,
+      "relative_velocity_km_s": 11.8,
+      "raw_reference": {
+        "report_id": "SOC-2026-RPT-105",
+        "description": "External reference event for CZ-4B R/B",
+        "primary_norad": "99005",
+        "secondary_norad": "25942",
+        "min_range_km": 22.1,
+        "rel_vel_km_s": 11.8
+      }
+    }
+  ]
+}

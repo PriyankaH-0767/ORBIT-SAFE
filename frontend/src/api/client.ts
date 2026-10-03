@@ -3,8 +3,47 @@
  * Uses native fetch and normalizes URL and error handling.
  */
 
-const RAW_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'
-export const API_BASE_URL = RAW_BASE_URL.replace(/\/+$/, '')
+function resolveBaseUrl(): string {
+  // 1. Explicit runtime override on window (useful for container/cloud injection without rebuilds)
+  if (
+    typeof window !== 'undefined' &&
+    (window as unknown as { __DDATO_API_URL__?: string }).__DDATO_API_URL__
+  ) {
+    return (window as unknown as { __DDATO_API_URL__: string }).__DDATO_API_URL__!
+  }
+
+  const envUrl = import.meta.env.VITE_API_BASE_URL
+
+  // 2. If an explicit environment variable is configured:
+  if (envUrl && typeof envUrl === 'string' && envUrl.trim() !== '') {
+    const trimmed = envUrl.trim()
+    // If the configured URL is localhost/127.0.0.1, but we are running in a production browser
+    // on a non-localhost host (like *.up.railway.app), do not send browser requests to localhost!
+    // Fall back to same-origin relative URLs so the deployed backend handles the request.
+    if (
+      typeof window !== 'undefined' &&
+      window.location &&
+      window.location.hostname &&
+      window.location.hostname !== 'localhost' &&
+      window.location.hostname !== '127.0.0.1' &&
+      (trimmed.includes('localhost') || trimmed.includes('127.0.0.1'))
+    ) {
+      return ''
+    }
+    return trimmed
+  }
+
+  // 3. In Vite development mode, default to local backend port 8000
+  if (import.meta.env.DEV) {
+    return 'http://localhost:8000'
+  }
+
+  // 4. In production builds, default to relative path (same origin)
+  // This allows the full-stack FastAPI app on Railway/Docker to serve both frontend and API seamlessly.
+  return ''
+}
+
+export const API_BASE_URL = resolveBaseUrl().replace(/\/+$/, '')
 
 export class ApiError extends Error {
   public status: number

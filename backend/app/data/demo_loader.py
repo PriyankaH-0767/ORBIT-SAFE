@@ -20,9 +20,34 @@ from typing import Any, Dict, List, Optional, Tuple
 from app.data.parser import CanonicalElementRecord, parse_catalog_payload
 from app.utils.time import now_utc
 
-_ROOT_DEMO = Path(__file__).resolve().parents[3] / "demo_data"
-_APP_DEMO = Path(__file__).resolve().parents[2] / "demo_data"
-DEMO_DIR = _ROOT_DEMO if _ROOT_DEMO.exists() else _APP_DEMO
+import os
+
+def _resolve_demo_dir() -> Path:
+    env_dir = os.environ.get("DEMO_DATA_DIR")
+    if env_dir:
+        p = Path(env_dir).resolve()
+        if p.exists():
+            return p
+
+    candidates = [
+        Path(__file__).resolve().parents[3] / "demo_data",
+        Path(__file__).resolve().parents[2] / "demo_data",
+        Path(__file__).resolve().parents[1] / "demo_data",
+        Path.cwd() / "demo_data",
+        Path.cwd() / "backend" / "demo_data",
+        Path("/app/demo_data"),
+        Path("/app/backend/demo_data"),
+    ]
+    for c in candidates:
+        if c.exists() and ((c / "demo_catalog.json").is_file() or (c / "tle" / "demo_catalog.tle").is_file()):
+            return c
+    for c in candidates:
+        if c.exists():
+            return c
+    return candidates[0]
+
+
+DEMO_DIR = _resolve_demo_dir()
 DEMO_TLE_PATH = DEMO_DIR / "tle" / "demo_catalog.tle"
 DEMO_JSON_PATH = DEMO_DIR / "demo_catalog.json"
 
