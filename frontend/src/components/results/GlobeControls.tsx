@@ -24,6 +24,27 @@ const SAMPLE_STEP_OPTIONS = [30, 60, 300, 600, 1800, 3600]
 const SPEED_OPTIONS = [1, 10, 60, 300]
 const DEBRIS_LIMIT_OPTIONS = [5, 10, 25, 50, 100]
 
+function formatUtcClock(isoString?: string): string {
+  if (!isoString || isoString === '—') return '—'
+  try {
+    const d = new Date(isoString)
+    if (isNaN(d.getTime())) {
+      const cleaned = isoString.replace('T', ' ').replace(/\.\d+.*$/, '')
+      return `${cleaned} UTC`
+    }
+    const pad = (n: number) => n.toString().padStart(2, '0')
+    const year = d.getUTCFullYear()
+    const month = pad(d.getUTCMonth() + 1)
+    const day = pad(d.getUTCDate())
+    const hours = pad(d.getUTCHours())
+    const mins = pad(d.getUTCMinutes())
+    const secs = pad(d.getUTCSeconds())
+    return `${year}-${month}-${day} ${hours}:${mins}:${secs} UTC`
+  } catch {
+    return isoString
+  }
+}
+
 export const GlobeControls: React.FC<GlobeControlsProps> = ({
   candidateCount,
   totalCandidates,
@@ -86,7 +107,7 @@ export const GlobeControls: React.FC<GlobeControlsProps> = ({
         <div className="flex items-center space-x-2 text-slate-300 bg-slate-950 px-2.5 py-1 rounded border border-slate-800">
           <span className="text-slate-400 text-[10px] uppercase tracking-wider">Clock (UTC):</span>
           <span className="font-mono text-cyan-300 font-medium">
-            {currentUtcTime || '—'}
+            {formatUtcClock(currentUtcTime)}
           </span>
         </div>
       </div>

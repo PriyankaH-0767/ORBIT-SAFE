@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { getRun } from '../api/runs'
+import { getPlan } from '../api/plans'
 import { getRunCandidates } from '../api/candidates'
 import { getRunEvents } from '../api/events'
 import { getRunHeatmap } from '../api/heatmap'
@@ -8,28 +9,37 @@ import { getRunValidation, createValidation } from '../api/validation'
 import { ApiError } from '../api/client'
 import { navigateTo } from '../utils/router'
 import type { RunStatusResponse } from '../types/run'
+import type { PlanResponse } from '../types/plan'
 import type { CandidateResultItem } from '../types/candidate'
 import type { EventResultItem } from '../types/event'
 import type { HeatmapResponse, HeatmapCell } from '../types/heatmap'
 import type { GlobeResponse } from '../types/globe'
 import type { ValidationResponse, ValidationExecutionRequest } from '../types/validation'
-import * as Cesium from 'cesium'
 
 import { ResultsHeader } from '../components/results/ResultsHeader'
+import { MissionBriefing } from '../components/results/MissionBriefing'
 import { ResultsSummary } from '../components/results/ResultsSummary'
 import { CandidateTable } from '../components/results/CandidateTable'
 import { CandidateDetailPanel } from '../components/results/CandidateDetailPanel'
 import { EventTable } from '../components/results/EventTable'
 import { EventDetailPanel } from '../components/results/EventDetailPanel'
+import { ConjunctionTimeline } from '../components/results/ConjunctionTimeline'
 import { Pagination } from '../components/results/Pagination'
 import { ResultsEmptyState } from '../components/results/ResultsEmptyState'
 import { HeatmapControls } from '../components/results/HeatmapControls'
 import { RiskHeatmap } from '../components/results/RiskHeatmap'
-import { OrbitGlobe } from '../components/results/OrbitGlobe'
 import { GlobeControls } from '../components/results/GlobeControls'
 import { GlobeLegend } from '../components/results/GlobeLegend'
 import { ValidationSection } from '../components/results/ValidationSection'
 import { ExportControls } from '../components/results/ExportControls'
+import { DataProvenanceStrip } from '../components/results/DataProvenanceStrip'
+import { CandidateComparison } from '../components/results/CandidateComparison'
+import { CandidateTradeoffExplorer } from '../components/results/CandidateTradeoffExplorer'
+import { JudgeExecutiveSummary } from '../components/results/JudgeExecutiveSummary'
+
+const OrbitGlobe = React.lazy(() =>
+  import('../components/results/OrbitGlobe').then((m) => ({ default: m.OrbitGlobe }))
+)
 
 interface ResultsPageProps {
   runId: string
@@ -38,12 +48,14 @@ interface ResultsPageProps {
 export const ResultsPage: React.FC<ResultsPageProps> = ({ runId }) => {
   // Authoritative run status
   const [run, setRun] = useState<RunStatusResponse | null>(null)
+  const [plan, setPlan] = useState<PlanResponse | null>(null)
   const [isRunLoading, setIsRunLoading] = useState<boolean>(true)
   const [runError, setRunError] = useState<string | null>(null)
   const [runErrorStatus, setRunErrorStatus] = useState<number | null>(null)
 
   // Candidate pagination & results
   const [candidates, setCandidates] = useState<CandidateResultItem[]>([])
+  const [explorerCandidates, setExplorerCandidates] = useState<CandidateResultItem[]>([])
   const [candidateTotal, setCandidateTotal] = useState<number>(0)
   const [candidateOffset, setCandidateOffset] = useState<number>(0)
   const candidateLimit = 20
@@ -52,6 +64,7 @@ export const ResultsPage: React.FC<ResultsPageProps> = ({ runId }) => {
 
   // Conjunction events pagination & results
   const [events, setEvents] = useState<EventResultItem[]>([])
+  const [timelineEvents, setTimelineEvents] = useState<EventResultItem[]>([])
   const [eventTotal, setEventTotal] = useState<number>(0)
   const [eventOffset, setEventOffset] = useState<number>(0)
   const eventLimit = 20
@@ -87,6 +100,37 @@ export const ResultsPage: React.FC<ResultsPageProps> = ({ runId }) => {
   const [selectedCandidate, setSelectedCandidate] = useState<CandidateResultItem | null>(null)
   const [selectedEvent, setSelectedEvent] = useState<EventResultItem | null>(null)
 
+  // Phase P29.1: Demo View vs Technical View state & collapsibles
+  const [viewMode, setViewMode] = useState<'demo' | 'technical'>('demo')
+  const [isDemoActive, setIsDemoActive] = useState<boolean>(true)
+  const [isCandidateTableExpanded, setIsCandidateTableExpanded] = useState<boolean>(true)
+  const [isEventTableExpanded, setIsEventTableExpanded] = useState<boolean>(true)
+  const [isTechnicalDetailsExpanded, setIsTechnicalDetailsExpanded] = useState<boolean>(false)
+
+  // Candidate comparison state (Phase P25 Section H)
+  const [comparisonCandidates, setComparisonCandidates] = useState<CandidateResultItem[]>([])
+
+  const handleToggleCompare = useCallback((candidate: CandidateResultItem) => {
+    setComparisonCandidates((prev) => {
+      const exists = prev.some((c) => c.candidate_id === candidate.candidate_id)
+      if (exists) {
+        return prev.filter((c) => c.candidate_id !== candidate.candidate_id)
+      }
+      if (prev.length >= 3) {
+        return [prev[1], prev[2], candidate]
+      }
+      return [...prev, candidate]
+    })
+  }, [])
+
+  const handleRemoveCompare = useCallback((candidateId: string) => {
+    setComparisonCandidates((prev) => prev.filter((c) => c.candidate_id !== candidateId))
+  }, [])
+
+  const handleClearCompare = useCallback(() => {
+    setComparisonCandidates([])
+  }, [])
+
   // Fetch Run Status
   const fetchRunStatus = useCallback(async () => {
     setIsRunLoading(true)
@@ -95,6 +139,13 @@ export const ResultsPage: React.FC<ResultsPageProps> = ({ runId }) => {
     try {
       const data = await getRun(runId)
       setRun(data)
+      if (data.plan_id) {
+        getPlan(data.plan_id)
+          .then((planData) => setPlan(planData))
+          .catch(() => {
+            // Graceful fallback to default/run parameters
+          })
+      }
     } catch (err) {
       if (err instanceof ApiError) {
         setRunErrorStatus(err.status)
@@ -123,6 +174,13 @@ export const ResultsPage: React.FC<ResultsPageProps> = ({ runId }) => {
         setCandidates(resp.candidates)
         setCandidateTotal(resp.total)
         setCandidateOffset(resp.offset)
+        if (resp.total <= candidateLimit) {
+          setExplorerCandidates(resp.candidates)
+        } else {
+          getRunCandidates(runId, 300, 0)
+            .then((all) => setExplorerCandidates(all.candidates))
+            .catch(() => setExplorerCandidates(resp.candidates))
+        }
       } catch (err) {
         if (err instanceof ApiError) {
           if (err.status === 404) {
@@ -154,6 +212,13 @@ export const ResultsPage: React.FC<ResultsPageProps> = ({ runId }) => {
         setEvents(resp.events)
         setEventTotal(resp.total)
         setEventOffset(resp.offset)
+        if (resp.total <= eventLimit) {
+          setTimelineEvents(resp.events)
+        } else {
+          getRunEvents(runId, 100, 0)
+            .then((all) => setTimelineEvents(all.events))
+            .catch(() => setTimelineEvents(resp.events))
+        }
       } catch (err) {
         if (err instanceof ApiError) {
           if (err.status === 404) {
@@ -217,6 +282,15 @@ export const ResultsPage: React.FC<ResultsPageProps> = ({ runId }) => {
       try {
         const data = await getRun(runId)
         if (isMounted) setRun(data)
+        if (data.plan_id) {
+          getPlan(data.plan_id)
+            .then((planData) => {
+              if (isMounted) setPlan(planData)
+            })
+            .catch(() => {
+              // Plan parameters unavailable, MissionBriefing uses fallbacks
+            })
+        }
       } catch (err) {
         if (isMounted) {
           if (err instanceof ApiError) {
@@ -269,6 +343,7 @@ export const ResultsPage: React.FC<ResultsPageProps> = ({ runId }) => {
         const resp = await getRunEvents(runId, eventLimit, 0)
         if (isMounted) {
           setEvents(resp.events)
+          setTimelineEvents(resp.events)
           setEventTotal(resp.total)
           setEventOffset(resp.offset)
         }
@@ -425,10 +500,9 @@ export const ResultsPage: React.FC<ResultsPageProps> = ({ runId }) => {
   const handleResetGlobeView = () => {
     const viewer = globeViewerRef.current
     if (!viewer || viewer.isDestroyed()) return
-    viewer.camera.flyTo({
-      destination: Cesium.Cartesian3.fromDegrees(0.0, 15.0, 24000000.0),
-      duration: 1.0,
-    })
+    if (typeof viewer.camera?.flyHome === 'function') {
+      viewer.camera.flyHome(1.0)
+    }
   }
 
   const handleFocusSelectedOnGlobe = () => {
@@ -446,6 +520,44 @@ export const ResultsPage: React.FC<ResultsPageProps> = ({ runId }) => {
       }
     }
   }
+
+  const handleInspectEventInGlobe = () => {
+    const globeSection = document.getElementById('globe-section')
+    if (globeSection) {
+      globeSection.scrollIntoView({ behavior: 'smooth' })
+    }
+    handleFocusSelectedOnGlobe()
+  }
+
+  // Part 10: Automatic camera focus on selected candidate
+  useEffect(() => {
+    if (selectedCandidate && globeViewerRef.current && !globeViewerRef.current.isDestroyed()) {
+      const viewer = globeViewerRef.current
+      try {
+        const entity = viewer.entities?.getById?.(`candidate-marker-${selectedCandidate.candidate_id}`)
+        if (entity) {
+          viewer.flyTo(entity, { duration: 1.0 })
+        }
+      } catch {
+        // Safe fallback in test/mock environments
+      }
+    }
+  }, [selectedCandidate])
+
+  // Part 10: Automatic camera focus on selected conjunction event
+  useEffect(() => {
+    if (selectedEvent && globeViewerRef.current && !globeViewerRef.current.isDestroyed()) {
+      const viewer = globeViewerRef.current
+      try {
+        const entity = viewer.entities?.getById?.(`event-marker-${selectedEvent.id}`)
+        if (entity) {
+          viewer.flyTo(entity, { duration: 1.0 })
+        }
+      } catch {
+        // Safe fallback in test/mock environments
+      }
+    }
+  }, [selectedEvent])
 
   const handleSelectCandidateFromGlobe = (candId: string) => {
     const existing = candidates.find((c) => c.candidate_id === candId)
@@ -517,6 +629,14 @@ export const ResultsPage: React.FC<ResultsPageProps> = ({ runId }) => {
     setSelectedCandidate((prev) =>
       prev?.candidate_id === candidate.candidate_id ? null : candidate
     )
+    if (heatmapData && heatmapData.layers.length > 0 && candidate.inclination_deg != null) {
+      const match = heatmapData.layers.find(
+        (l) => Math.abs(l.inclination_deg - candidate.inclination_deg) < 1e-4
+      )
+      if (match) {
+        setSelectedInclination(match.inclination_deg)
+      }
+    }
   }
 
   const handleSelectCandidateFromHeatmap = (cell: HeatmapCell) => {
@@ -701,13 +821,37 @@ export const ResultsPage: React.FC<ResultsPageProps> = ({ runId }) => {
         runId={runId}
         planId={run?.plan_id}
         status={run?.status}
+        demoMode={isDemoActive && (plan?.demo_mode ?? true)}
+        dataSource={plan?.data_source ?? 'celestrak'}
+        viewMode={viewMode}
+        onViewModeChange={setViewMode}
+        isDemoActive={isDemoActive}
+        onToggleDemoMode={() => setIsDemoActive((prev) => !prev)}
         onBackToPlanner={() => navigateTo('/')}
       />
 
+      {/* Phase P29.1: Demo Overview Summary */}
+      {viewMode === 'demo' && (
+        <JudgeExecutiveSummary
+          run={run}
+          plan={plan}
+          candidateTotal={candidateTotal}
+          eventTotal={eventTotal}
+          events={timelineEvents.length > 0 ? timelineEvents : events}
+          isDemoActive={isDemoActive}
+        />
+      )}
+
+      {/* Part 1: Mission Briefing immediately beneath Results Header */}
+      <MissionBriefing run={run} plan={plan} validation={validation} />
+
       {/* Authoritative Run Summary Metrics */}
-      <section aria-labelledby="summary-metrics-heading">
+      <section aria-labelledby="summary-metrics-heading" className="space-y-4">
         <h2 id="summary-metrics-heading" className="sr-only">Screening Summary Metrics</h2>
         <ResultsSummary run={run} isLoading={isRunLoading} />
+        {viewMode === 'technical' && (
+          <DataProvenanceStrip run={run} validation={validation} globeData={globeData} />
+        )}
       </section>
 
       {/* Selected Candidate Detail Panel */}
@@ -721,11 +865,26 @@ export const ResultsPage: React.FC<ResultsPageProps> = ({ runId }) => {
         </section>
       )}
 
-      {/* Ranked Candidate Section */}
+      {/* Candidate Comparison Panel (Phase P25 Section H) */}
+      {comparisonCandidates.length > 0 && (
+        <section aria-labelledby="candidate-comparison-heading">
+          <h2 id="candidate-comparison-heading" className="sr-only">Candidate Comparison</h2>
+          <CandidateComparison
+            candidates={comparisonCandidates}
+            onRemoveCandidate={handleRemoveCompare}
+            onClear={handleClearCompare}
+            onSelectCandidate={handleSelectCandidate}
+          />
+        </section>
+      )}
+
+      {/* CANDIDATE TRADE-OFFS */}
       <section className="space-y-3" aria-labelledby="candidate-table-heading">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 border-b border-slate-800 pb-2">
           <div>
-            <h3 id="candidate-table-heading" className="text-base font-bold text-white font-mono flex items-center space-x-2">
+            <h3 id="candidate-table-heading" className="text-base font-bold text-white font-mono flex flex-wrap items-center gap-2">
+              <span className="text-cyan-400">CANDIDATE TRADE-OFFS</span>
+              <span className="text-slate-500 hidden sm:inline">•</span>
               <span>Ranked Deployment Candidates</span>
               {candidateTotal > 0 && (
                 <span className="text-xs px-2 py-0.5 rounded bg-slate-800 text-slate-300 border border-slate-700 font-normal">
@@ -733,8 +892,8 @@ export const ResultsPage: React.FC<ResultsPageProps> = ({ runId }) => {
                 </span>
               )}
             </h3>
-            <p className="text-xs text-slate-400 font-mono">
-              Ranking supplied by the backend screening objective. Select a candidate to view telemetry.
+            <p className="text-xs text-cyan-300/90 font-mono mt-0.5">
+              Compare candidate configurations using the persisted ranking, propulsion estimates, event counts and screening-risk indicators.
             </p>
           </div>
         </div>
@@ -757,41 +916,92 @@ export const ResultsPage: React.FC<ResultsPageProps> = ({ runId }) => {
             icon="candidates"
           />
         ) : (
-          <div className="space-y-3">
-            <CandidateTable
-              candidates={candidates}
+          <div className="space-y-4">
+            <CandidateTradeoffExplorer
+              candidates={explorerCandidates.length > 0 ? explorerCandidates : candidates}
               selectedCandidateId={selectedCandidate?.candidate_id}
+              comparisonCandidateIds={comparisonCandidates.map((c) => c.candidate_id)}
               onSelectCandidate={handleSelectCandidate}
               isLoading={isCandidatesLoading}
             />
-            <Pagination
-              total={candidateTotal}
-              limit={candidateLimit}
-              offset={candidateOffset}
-              onPageChange={handleCandidatePageChange}
-              disabled={isCandidatesLoading}
-              label="candidates"
-            />
+
+            {viewMode === 'demo' ? (
+              <div className="border border-slate-800 rounded-xl p-3 bg-slate-950/60">
+                <button
+                  type="button"
+                  data-testid="toggle-candidate-table-btn"
+                  onClick={() => setIsCandidateTableExpanded((prev) => !prev)}
+                  className="w-full flex items-center justify-between text-xs font-mono font-bold text-cyan-300 hover:text-white transition-colors cursor-pointer"
+                  aria-expanded={isCandidateTableExpanded}
+                >
+                  <span className="flex items-center gap-2">
+                    <span>
+                      {isCandidateTableExpanded
+                        ? '▲ HIDE CANDIDATE TABLE'
+                        : `▼ VIEW DETAILED CANDIDATE TELEMETRY TABLE (${candidateTotal} candidates)`}
+                    </span>
+                    {!isCandidateTableExpanded && (
+                      <span className="text-[10px] font-normal text-slate-400 font-sans hidden sm:inline">
+                        — Click to inspect raw numerical telemetry &amp; comparison controls
+                      </span>
+                    )}
+                  </span>
+                  <span className="text-[10px] text-slate-500 font-normal">
+                    {isCandidateTableExpanded ? 'Collapse' : 'Expand'}
+                  </span>
+                </button>
+                {isCandidateTableExpanded && (
+                  <div className="pt-3 space-y-3">
+                    <CandidateTable
+                      candidates={candidates}
+                      selectedCandidateId={selectedCandidate?.candidate_id}
+                      onSelectCandidate={handleSelectCandidate}
+                      isLoading={isCandidatesLoading}
+                      comparisonCandidateIds={comparisonCandidates.map((c) => c.candidate_id)}
+                      onToggleCompare={handleToggleCompare}
+                    />
+                    <Pagination
+                      total={candidateTotal}
+                      limit={candidateLimit}
+                      offset={candidateOffset}
+                      onPageChange={handleCandidatePageChange}
+                      disabled={isCandidatesLoading}
+                      label="candidates"
+                    />
+                  </div>
+                )}
+              </div>
+            ) : (
+              <>
+                <CandidateTable
+                  candidates={candidates}
+                  selectedCandidateId={selectedCandidate?.candidate_id}
+                  onSelectCandidate={handleSelectCandidate}
+                  isLoading={isCandidatesLoading}
+                  comparisonCandidateIds={comparisonCandidates.map((c) => c.candidate_id)}
+                  onToggleCompare={handleToggleCompare}
+                />
+                <Pagination
+                  total={candidateTotal}
+                  limit={candidateLimit}
+                  offset={candidateOffset}
+                  onPageChange={handleCandidatePageChange}
+                  disabled={isCandidatesLoading}
+                  label="candidates"
+                />
+              </>
+            )}
           </div>
         )}
       </section>
 
-      {/* Selected Event Detail Panel */}
-      {selectedEvent && (
-        <section aria-labelledby="event-detail-heading">
-          <h2 id="event-detail-heading" className="sr-only">Conjunction Event Details</h2>
-          <EventDetailPanel
-            event={selectedEvent}
-            onClose={() => setSelectedEvent(null)}
-          />
-        </section>
-      )}
-
-      {/* Conjunction Events Section */}
-      <section className="space-y-3" aria-labelledby="event-table-heading">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+      {/* CLOSE-APPROACH SCREENING (Part 13) */}
+      <section className="space-y-4" aria-labelledby="event-table-heading">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 border-b border-slate-800 pb-2">
           <div>
-            <h3 id="event-table-heading" className="text-base font-bold text-white font-mono flex items-center space-x-2">
+            <h3 id="event-table-heading" className="text-base font-bold text-white font-mono flex flex-wrap items-center gap-2">
+              <span className="text-amber-400">CLOSE-APPROACH SCREENING</span>
+              <span className="text-slate-500 hidden sm:inline">•</span>
               <span>Close-Approach Conjunction Events</span>
               {eventTotal > 0 && (
                 <span className="text-xs px-2 py-0.5 rounded bg-slate-800 text-amber-300 border border-slate-700 font-normal">
@@ -799,11 +1009,27 @@ export const ResultsPage: React.FC<ResultsPageProps> = ({ runId }) => {
                 </span>
               )}
             </h3>
-            <p className="text-xs text-slate-400 font-mono">
-              Events identified within screening threshold. Filtered candidate events are highlighted.
+            <p className="text-xs text-amber-300/90 font-mono mt-0.5">
+              Inspect the candidate/debris events identified within the configured screening threshold.
             </p>
           </div>
         </div>
+
+        {/* Part 1 & 13: Conjunction Timeline */}
+        <ConjunctionTimeline
+          events={timelineEvents.length > 0 ? timelineEvents : events}
+          selectedEventId={selectedEvent?.id}
+          selectedCandidateId={selectedCandidate?.candidate_id}
+          plan={plan}
+          onSelectEvent={(evt) => {
+            setSelectedEvent(evt)
+            if (evt.candidate_id) {
+              handleSelectCandidateIdFromEvent(evt.candidate_id)
+            }
+          }}
+          onInspectInGlobe={handleInspectEventInGlobe}
+          onSelectCandidateId={handleSelectCandidateIdFromEvent}
+        />
 
         {eventsError ? (
           <div className="p-4 bg-rose-950/40 border border-rose-800 rounded-xl text-xs font-mono text-rose-300 flex justify-between items-center">
@@ -822,6 +1048,52 @@ export const ResultsPage: React.FC<ResultsPageProps> = ({ runId }) => {
             message="No close-approach events were detected for this run."
             icon="events"
           />
+        ) : viewMode === 'demo' ? (
+          <div className="border border-slate-800 rounded-xl p-3 bg-slate-950/60">
+            <button
+              type="button"
+              data-testid="toggle-event-table-btn"
+              onClick={() => setIsEventTableExpanded((prev) => !prev)}
+              className="w-full flex items-center justify-between text-xs font-mono font-bold text-amber-300 hover:text-white transition-colors cursor-pointer"
+              aria-expanded={isEventTableExpanded}
+            >
+              <span className="flex items-center gap-2">
+                <span>
+                  {isEventTableExpanded
+                    ? '▲ HIDE CONJUNCTION EVENT TABLE'
+                    : `▼ VIEW DETAILED CONJUNCTION EVENT TABLE (${eventTotal} events)`}
+                </span>
+                {!isEventTableExpanded && (
+                  <span className="text-[10px] font-normal text-slate-400 font-sans hidden sm:inline">
+                    — Click to inspect raw numerical event records
+                  </span>
+                )}
+              </span>
+              <span className="text-[10px] text-slate-500 font-normal">
+                {isEventTableExpanded ? 'Collapse' : 'Expand'}
+              </span>
+            </button>
+            {isEventTableExpanded && (
+              <div className="pt-3 space-y-3">
+                <EventTable
+                  events={events}
+                  selectedCandidateId={selectedCandidate?.candidate_id}
+                  selectedEventId={selectedEvent?.id}
+                  onSelectEvent={(evt) => setSelectedEvent(evt)}
+                  onSelectCandidateId={handleSelectCandidateIdFromEvent}
+                  isLoading={isEventsLoading}
+                />
+                <Pagination
+                  total={eventTotal}
+                  limit={eventLimit}
+                  offset={eventOffset}
+                  onPageChange={handleEventPageChange}
+                  disabled={isEventsLoading}
+                  label="conjunction events"
+                />
+              </div>
+            )}
+          </div>
         ) : (
           <div className="space-y-3">
             <EventTable
@@ -842,13 +1114,27 @@ export const ResultsPage: React.FC<ResultsPageProps> = ({ runId }) => {
             />
           </div>
         )}
+
+        {/* Selected Event Detail Panel (Part 13) */}
+        {selectedEvent && (
+          <div aria-labelledby="event-detail-heading" className="pt-2">
+            <h4 id="event-detail-heading" className="sr-only">Conjunction Event Details</h4>
+            <EventDetailPanel
+              event={selectedEvent}
+              onClose={() => setSelectedEvent(null)}
+              onInspectInGlobe={handleInspectEventInGlobe}
+            />
+          </div>
+        )}
       </section>
 
-      {/* 2D Risk Heatmap Section (Phase P21) */}
+      {/* RISK LANDSCAPE */}
       <section className="space-y-4" aria-labelledby="heatmap-section-heading">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 border-b border-slate-800 pb-2">
           <div>
-            <h3 id="heatmap-section-heading" className="text-base font-bold text-white font-mono flex items-center space-x-2">
+            <h3 id="heatmap-section-heading" className="text-base font-bold text-white font-mono flex flex-wrap items-center gap-2">
+              <span className="text-indigo-400">RISK LANDSCAPE</span>
+              <span className="text-slate-500 hidden sm:inline">•</span>
               <span>Screening Risk Heatmap</span>
               {selectedInclination != null && (
                 <span className="text-xs px-2 py-0.5 rounded bg-indigo-950 text-indigo-300 border border-indigo-800 font-normal">
@@ -856,8 +1142,8 @@ export const ResultsPage: React.FC<ResultsPageProps> = ({ runId }) => {
                 </span>
               )}
             </h3>
-            <p className="text-xs text-slate-400 font-mono">
-              Interactive 2D risk density over deployment delay and orbital altitude. Select a cell to inspect candidate telemetry.
+            <p className="text-xs text-indigo-300/90 font-mono mt-0.5">
+              Explore how the bounded screening score varies across altitude and deployment delay.
             </p>
           </div>
         </div>
@@ -892,6 +1178,7 @@ export const ResultsPage: React.FC<ResultsPageProps> = ({ runId }) => {
                 selectedInclination={selectedInclination}
                 onSelectInclination={handleSelectInclination}
                 isLoading={isHeatmapLoading}
+                selectedCandidate={selectedCandidate}
               />
             )}
             <RiskHeatmap
@@ -903,11 +1190,13 @@ export const ResultsPage: React.FC<ResultsPageProps> = ({ runId }) => {
         )}
       </section>
 
-      {/* 3D Orbital Trajectory Globe Section (Phase P22) */}
-      <section className="space-y-4" aria-labelledby="globe-section-heading">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+      {/* 3D ORBIT GEOMETRY */}
+      <section id="globe-section" className="space-y-4" aria-labelledby="globe-section-heading">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 border-b border-slate-800 pb-2">
           <div>
-            <h3 id="globe-section-heading" className="text-base font-bold text-white font-mono flex items-center space-x-2">
+            <h3 id="globe-section-heading" className="text-base font-bold text-white font-mono flex flex-wrap items-center gap-2">
+              <span className="text-cyan-400">3D ORBIT GEOMETRY</span>
+              <span className="text-slate-500 hidden sm:inline">•</span>
               <span>3D Orbital Trajectory & Conjunction Globe</span>
               {globeData && (
                 <span className="text-xs px-2 py-0.5 rounded bg-cyan-950 text-cyan-300 border border-cyan-800 font-normal">
@@ -915,8 +1204,8 @@ export const ResultsPage: React.FC<ResultsPageProps> = ({ runId }) => {
                 </span>
               )}
             </h3>
-            <p className="text-xs text-slate-400 font-mono">
-              Inertial-to-pseudo-fixed orbital visualization of evaluated deployment candidates, cataloged debris trajectories, and close-approach encounters.
+            <p className="text-xs text-cyan-300/90 font-mono mt-0.5">
+              Inspect candidate and debris trajectories and the spatial location of screened close approaches. Explore the spatial relationship between candidate trajectories, debris trajectories and screened close-approach events.
             </p>
           </div>
         </div>
@@ -944,6 +1233,27 @@ export const ResultsPage: React.FC<ResultsPageProps> = ({ runId }) => {
           />
         ) : (
           <div className="space-y-3">
+            {/* Part 9: Globe Education Banner */}
+            <div
+              data-testid="globe-education-banner"
+              className="p-3.5 bg-slate-950/80 border border-cyan-800/40 rounded-xl space-y-1.5 font-mono text-xs"
+            >
+              <div className="flex items-center space-x-2 text-cyan-300 font-bold uppercase text-[11px]">
+                <span>ℹ</span>
+                <span>WHAT YOU ARE SEEING</span>
+              </div>
+              <p className="text-slate-300 font-sans text-xs leading-relaxed">
+                Candidate trajectories, catalog debris trajectories and screened close-approach event locations are displayed using the backend-provided trajectory data.
+              </p>
+              <div className="flex flex-wrap items-center gap-2.5 text-[10px] text-slate-400 pt-0.5">
+                <span>Frame: <strong className="text-slate-200">TEME</strong></span>
+                <span>•</span>
+                <span>Time: <strong className="text-slate-200">UTC</strong></span>
+                <span>•</span>
+                <span>Visualization transform: <strong className="text-slate-200">Cesium pseudofixed transform</strong></span>
+              </div>
+            </div>
+
             <GlobeControls
               candidateCount={globeData?.candidate_count ?? 0}
               totalCandidates={candidateTotal || (globeData?.candidate_count ?? 0)}
@@ -964,43 +1274,119 @@ export const ResultsPage: React.FC<ResultsPageProps> = ({ runId }) => {
               disabled={isGlobeLoading}
             />
 
-            <OrbitGlobe
-              globeData={globeData}
-              selectedCandidateId={selectedCandidate?.candidate_id}
-              selectedEventId={selectedEvent?.id}
-              showDebris={showDebris}
-              isPlaying={isGlobePlaying}
-              playbackSpeed={globePlaybackSpeed}
-              onClockTick={setGlobeCurrentUtcTime}
-              onSelectCandidate={handleSelectCandidateFromGlobe}
-              onSelectEvent={handleSelectEventFromGlobe}
-              onViewerReady={(v) => {
-                globeViewerRef.current = v
-              }}
-              isLoading={isGlobeLoading}
-            />
+            <React.Suspense
+              fallback={
+                <div
+                  data-testid="globe-loading-placeholder"
+                  className="w-full h-[520px] bg-slate-950/90 border border-slate-800 rounded-xl flex flex-col items-center justify-center space-y-3 font-mono text-xs text-slate-400"
+                >
+                  <div className="w-8 h-8 border-2 border-cyan-400 border-t-transparent rounded-full animate-spin" />
+                  <span className="text-white font-bold tracking-wider uppercase">Loading 3D Cesium Orbit Viewer…</span>
+                  <span className="text-[11px] text-slate-500">Initializing WebGL context and ephemeris transform pipeline</span>
+                </div>
+              }
+            >
+              <OrbitGlobe
+                globeData={globeData}
+                selectedCandidateId={selectedCandidate?.candidate_id}
+                selectedEventId={selectedEvent?.id}
+                comparisonCandidateIds={comparisonCandidates.map((c) => c.candidate_id)}
+                showDebris={showDebris}
+                isPlaying={isGlobePlaying}
+                playbackSpeed={globePlaybackSpeed}
+                onClockTick={setGlobeCurrentUtcTime}
+                onSelectCandidate={handleSelectCandidateFromGlobe}
+                onSelectEvent={handleSelectEventFromGlobe}
+                onViewerReady={(v) => {
+                  globeViewerRef.current = v
+                }}
+                isLoading={isGlobeLoading}
+              />
+            </React.Suspense>
 
             <GlobeLegend />
           </div>
         )}
       </section>
 
-      {/* External Reference Validation Section (Phase P23) */}
-      <ValidationSection
-        validation={validation}
-        isLoading={isValidationLoading}
-        isRunning={isValidationRunning}
-        error={validationError}
-        onRunValidation={handleRunValidation}
-        onRetry={handleRetryValidation}
-        onSelectCandidateId={handleSelectCandidateFromValidation}
-      />
+      {/* External Reference Validation Section (Phase P23 & P29) */}
+      <section className="space-y-3" aria-labelledby="validation-section-heading">
+        {/* Part 10: Validation Education Banner */}
+        <div
+          data-testid="validation-education-banner"
+          className="p-3.5 bg-slate-950/80 border border-slate-800 rounded-xl space-y-1.5 font-mono text-xs"
+        >
+          <div className="flex items-center space-x-2 text-indigo-300 font-bold uppercase text-[11px]">
+            <span>ℹ</span>
+            <span>REFERENCE VALIDATION BENCHMARK</span>
+          </div>
+          <p className="text-slate-300 font-sans text-xs leading-relaxed">
+            Reference comparison checks whether D-DATO events can be paired with external reference events using configured temporal and spatial tolerances.
+          </p>
+          <div className="text-[10px] text-slate-400 pt-0.5">
+            <span>Data mode: <strong className="text-cyan-300">{plan?.demo_mode ? 'DEMO DATA' : 'LIVE DATA'}</strong></span>
+            <span className="mx-2">•</span>
+            <span>Source: <strong className="text-slate-200">{validation?.source || (plan?.demo_mode ? 'socrates_demo_fixture' : 'socrates_live')}</strong></span>
+          </div>
+        </div>
+
+        <ValidationSection
+          validation={validation}
+          isLoading={isValidationLoading}
+          isRunning={isValidationRunning}
+          error={validationError}
+          onRunValidation={handleRunValidation}
+          onRetry={handleRetryValidation}
+          onSelectCandidateId={handleSelectCandidateFromValidation}
+        />
+      </section>
 
       {/* Export Results Section (Phase P24) */}
       <ExportControls
         runId={runId}
         disabled={isRunLoading}
       />
+
+      {/* Part 13: Technical Details Collapsible (Demo View) */}
+      {viewMode === 'demo' && (
+        <section aria-labelledby="technical-details-heading" className="pt-2">
+          <div className="border border-slate-800 rounded-xl p-4 bg-slate-950/70 space-y-3 font-mono">
+            <button
+              type="button"
+              data-testid="toggle-technical-details-btn"
+              onClick={() => setIsTechnicalDetailsExpanded((prev) => !prev)}
+              className="w-full flex items-center justify-between text-xs font-bold text-slate-300 hover:text-white transition-colors cursor-pointer"
+              aria-expanded={isTechnicalDetailsExpanded}
+            >
+              <div className="flex items-center gap-2">
+                <span className="text-cyan-400">⚙</span>
+                <span id="technical-details-heading">
+                  {isTechnicalDetailsExpanded
+                    ? '▲ HIDE TECHNICAL PROVENANCE & SCIENTIFIC BOUNDARIES'
+                    : '▼ VIEW TECHNICAL PROVENANCE & SCIENTIFIC BOUNDARIES'}
+                </span>
+              </div>
+              <span className="text-[10px] text-slate-500 font-normal">
+                {isTechnicalDetailsExpanded ? 'Collapse' : 'Expand detailed metadata'}
+              </span>
+            </button>
+
+            {isTechnicalDetailsExpanded && (
+              <div className="pt-3 border-t border-slate-800/80 space-y-4">
+                <DataProvenanceStrip run={run} validation={validation} globeData={globeData} />
+                <div className="p-3 bg-slate-900/80 border border-slate-800 rounded-lg text-xs text-slate-400 space-y-1">
+                  <span className="text-slate-200 font-bold uppercase text-[11px] block">
+                    Scientific Scope &amp; Boundaries:
+                  </span>
+                  <p className="font-sans text-xs text-slate-300 leading-relaxed">
+                    D-DATO is an early-stage screening aid designed for relative trade-off exploration. It does not compute collision probabilities, certify flight maneuvers, generate CDMs, or model high-order gravitational perturbations beyond J2/SGP4.
+                  </p>
+                </div>
+              </div>
+            )}
+          </div>
+        </section>
+      )}
     </div>
   )
 }

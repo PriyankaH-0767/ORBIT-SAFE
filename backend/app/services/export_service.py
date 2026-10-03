@@ -674,6 +674,7 @@ class ExportService:
             # Document Title & Subtitle
             story.append(Paragraph("D-DATO Screening Report", title_style))
             story.append(Paragraph("Debris-Aware Orbit &amp; Deployment-Window Planner", subtitle_style))
+            story.append(Paragraph("<font size=8 color='#64748B'>Smart India Hackathon 2026 &bull; Problem Statement 26209</font>", subtitle_style))
             story.append(Spacer(1, 8))
 
             # Non-operational Notice Callout Box

@@ -1,8 +1,11 @@
 import React, { useState } from 'react'
+import { PlannerHero } from '../components/planner/PlannerHero'
 import { PlannerForm } from '../components/planner/PlannerForm'
 import { RunProgressPanel } from '../components/run/RunProgressPanel'
 import { useRunPolling } from '../hooks/useRunPolling'
 import { createPlan } from '../api/plans'
+import { getDemoRun } from '../api/demo'
+import { navigateTo } from '../utils/router'
 import { DEFAULT_PLAN_FORM, type PlanCreateRequest } from '../types/plan'
 
 export const PlannerPage: React.FC = () => {
@@ -12,7 +15,11 @@ export const PlannerPage: React.FC = () => {
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
 
-  // Polling hook for active run
+  // Phase P28: Instant demo state
+  const [isDemoLoading, setIsDemoLoading] = useState<boolean>(false)
+  const [demoError, setDemoError] = useState<string | null>(null)
+
+  // Polling hook for active run (used for non-demo 90s runs)
   const {
     run,
     isLoading: isPollingLoading,
@@ -36,6 +43,25 @@ export const PlannerPage: React.FC = () => {
     }
   }
 
+  // Phase P28: Instant demo — call /api/v1/demo/run and navigate directly to results
+  const handleOpenDemo = async () => {
+    setIsDemoLoading(true)
+    setDemoError(null)
+    try {
+      const demoResp = await getDemoRun()
+      // Navigate directly to the completed demo run results page
+      navigateTo(`/results/${demoResp.run_id}`)
+    } catch (err) {
+      const msg =
+        err instanceof Error
+          ? err.message
+          : 'Failed to load demo. Please ensure the backend is running.'
+      setDemoError(msg)
+    } finally {
+      setIsDemoLoading(false)
+    }
+  }
+
   const handleBackToPlanner = () => {
     setActiveRunId(null)
     setSubmitError(null)
@@ -54,9 +80,26 @@ export const PlannerPage: React.FC = () => {
         />
       ) : (
         <div className="space-y-6">
+          <PlannerHero
+            onStartDemo={handleOpenDemo}
+            isDemoLoading={isDemoLoading}
+            isDemoReady={true}
+          />
+
+          {/* Phase P28: Demo error display */}
+          {demoError && (
+            <div
+              role="alert"
+              className="max-w-5xl mx-auto px-4 py-3 rounded-lg bg-red-950/60 border border-red-800 text-red-300 text-sm font-mono"
+            >
+              <span className="font-bold">DEMO ERROR: </span>
+              {demoError}
+            </div>
+          )}
+
           <div className="max-w-5xl mx-auto border-b border-slate-800 pb-4">
             <h2 className="text-xl font-bold tracking-tight text-white font-mono">
-              Mission Planning & Screening Envelope
+              Mission Planning &amp; Screening Envelope
             </h2>
             <p className="text-xs text-slate-400 mt-1">
               Configure orbital parameters and deployment window search constraints to screen against cataloged orbital debris.
@@ -68,6 +111,8 @@ export const PlannerPage: React.FC = () => {
             onSubmit={handleFormSubmit}
             isSubmitting={isSubmitting}
             apiError={submitError}
+            onOpenDemo={handleOpenDemo}
+            isDemoLoading={isDemoLoading}
           />
         </div>
       )}

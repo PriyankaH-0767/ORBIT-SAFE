@@ -29,7 +29,7 @@ describe('GlobeControls Component', () => {
 
     expect(screen.getByText('3 shown')).toBeInTheDocument()
     expect(screen.getByText('of 15')).toBeInTheDocument()
-    expect(screen.getByText('2026-10-15T12:00:00Z')).toBeInTheDocument()
+    expect(screen.getByText('2026-10-15 12:00:00 UTC')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /play orbital animation/i })).toBeInTheDocument()
   })
 

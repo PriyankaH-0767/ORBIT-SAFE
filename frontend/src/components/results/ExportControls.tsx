@@ -66,13 +66,15 @@ export const ExportControls: React.FC<ExportControlsProps> = ({
         <div>
           <h3
             id="export-section-heading"
-            className="text-base font-bold text-white font-mono flex items-center gap-2"
+            className="text-base font-bold text-white font-mono flex flex-wrap items-center gap-2"
           >
             <span className="w-2.5 h-2.5 rounded-full bg-cyan-400"></span>
-            Export Results
+            <span className="text-cyan-400">ANALYSIS PACKAGE</span>
+            <span className="text-slate-500 hidden sm:inline">•</span>
+            <span>Export Results</span>
           </h3>
-          <p className="text-xs text-slate-400 mt-0.5 font-mono">
-            Download backend-generated data artifacts and executive summary reports.
+          <p className="text-xs text-cyan-300/90 mt-0.5 font-mono">
+            Download the persisted analysis for reporting or further review.
           </p>
         </div>
 

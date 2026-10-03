@@ -183,6 +183,42 @@ export const CandidateDetailPanel: React.FC<CandidateDetailPanelProps> = ({
           </span>
         </div>
       </div>
+
+      {/* Section G: Why is this candidate ranked here? */}
+      <div
+        data-testid="candidate-why-ranked-panel"
+        className="mt-4 p-4 bg-slate-950/90 border border-indigo-500/30 rounded-lg space-y-2.5"
+      >
+        <div className="flex items-center space-x-2">
+          <span className="w-2 h-2 rounded-full bg-cyan-400" />
+          <h4 className="text-xs font-bold text-white font-mono uppercase tracking-wider">
+            Why is this candidate ranked here?
+          </h4>
+        </div>
+
+        <p className="text-xs text-slate-300 font-sans leading-relaxed">
+          {candidate.rank != null ? (
+            <>
+              This candidate is evaluated at <span className="font-semibold text-white font-mono">{candidate.altitude_km.toFixed(1)} km</span> altitude, <span className="font-semibold text-white font-mono">{candidate.inclination_deg.toFixed(2)}°</span> inclination, and a <span className="font-semibold text-white font-mono">{candidate.deployment_delay_minutes.toFixed(1)} min</span> deployment delay. Within the evaluated candidate set, it exhibits a {candidate.risk_score < 30 ? 'relatively low' : candidate.risk_score < 70 ? 'moderate' : 'elevated'} screening-risk score ({candidate.risk_score.toFixed(1)} / 100) and {candidate.within_dv_budget ? 'an estimated propulsion demand within the configured budget' : 'an estimated propulsion demand exceeding the configured budget'} (Delta-V: {candidate.delta_v_m_s.toFixed(2)} m/s, propellant fraction: {fuelPct}%). {eventCount === 0 ? 'No close-approach events were screened within the threshold.' : `${eventCount} close-approach event(s) were screened (minimum miss distance: ${displayMiss}).`}
+            </>
+          ) : (
+            <>
+              Candidate evaluated at <span className="font-semibold text-white font-mono">{candidate.altitude_km.toFixed(1)} km</span> and <span className="font-semibold text-white font-mono">{candidate.inclination_deg.toFixed(2)}°</span>. Relative ranking and composite score are determined by multi-objective weights applied to propulsion demand and screening-risk indicators.
+            </>
+          )}
+        </p>
+
+        <div className="pt-2 border-t border-slate-800/80 flex flex-wrap items-center justify-between gap-2 text-[10px] text-slate-400 font-mono">
+          <div className="flex items-center space-x-3">
+            <span>Rank: <strong className="text-cyan-300">{candidate.rank != null ? `#${candidate.rank}` : '—'}</strong></span>
+            <span>Composite Score: <strong className="text-white">{candidate.composite_score != null ? candidate.composite_score.toFixed(3) : '—'}</strong></span>
+            <span>Budget: <strong className={candidate.within_dv_budget ? 'text-emerald-400' : 'text-rose-400'}>{candidate.within_dv_budget ? 'Compliant' : 'Exceeded'}</strong></span>
+          </div>
+          <span className="italic text-slate-500">
+            Relative screening heuristic • Non-operational mission planning
+          </span>
+        </div>
+      </div>
     </div>
   )
 }

@@ -10,6 +10,7 @@ from fastapi.staticfiles import StaticFiles
 from app.api.v1 import api_router
 from app.core.config import settings
 from app.db import init_db
+from app.services.demo_service import warm_demo_cache
 from app.utils.logging import get_logger, setup_logging
 
 logger = get_logger("main")
@@ -27,6 +28,7 @@ async def lifespan(app: FastAPI):
         settings.DEBUG,
     )
     init_db()
+    warm_demo_cache()  # Phase P28: pre-build canonical demo run in background thread
     yield
     logger.info("Shutting down %s", settings.APP_NAME)
 

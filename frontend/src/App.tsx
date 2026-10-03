@@ -18,7 +18,7 @@ export const App: React.FC = () => {
         )}
       </div>
       <footer className="border-t border-slate-900 bg-slate-950/80 py-4 text-center text-xs text-slate-500 font-mono">
-        D-DATO Debris-Aware Orbit & Deployment-Window Planner &bull; Smart India Hackathon 2026 (Problem Statement 26209)
+        D-DATO Debris-Aware Orbit &bull; Smart India Hackathon 2026 (Problem Statement 26209)
       </footer>
     </div>
   )
